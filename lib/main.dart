@@ -15,6 +15,7 @@ void main() async {
   } catch (e) {
     debugPrint('Firebase initialization warning: $e');
   }
+  
 
   runApp(
     const ProviderScope(
@@ -29,6 +30,8 @@ class IELTSUniversityAdminWeb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const primaryRed = Color(0xFFD81B60);
+    const slateNavy = Color(0xFF1A202C);
+    const scaffoldBg = Color(0xFFF7FAFC);
 
     return MaterialApp(
       title: 'IELTS University Admin',
@@ -36,21 +39,34 @@ class IELTSUniversityAdminWeb extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         primaryColor: primaryRed,
-        colorScheme: ColorScheme.fromSeed(seedColor: primaryRed, primary: primaryRed),
+        scaffoldBackgroundColor: scaffoldBg,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: primaryRed, 
+          primary: primaryRed,
+          secondary: slateNavy,
+        ),
         textTheme: GoogleFonts.montserratTextTheme(),
         cardTheme: CardThemeData(
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: Colors.grey.withOpacity(0.1)),
+          ),
+          color: Colors.white,
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: primaryRed,
-          foregroundColor: Colors.white,
+          backgroundColor: Colors.white,
+          foregroundColor: slateNavy,
+          elevation: 0,
+          centerTitle: false,
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: primaryRed,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
       ),
