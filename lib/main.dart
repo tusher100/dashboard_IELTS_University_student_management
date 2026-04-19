@@ -31,7 +31,7 @@ class IELTSUniversityAdminWeb extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    const primaryRed = Color(0xFFD81B60);
+    const primaryRed = Color(0xFFE4284C);
     const slateNavy = Color(0xFF1A202C);
     const scaffoldBg = Color(0xFFF7FAFC);
 

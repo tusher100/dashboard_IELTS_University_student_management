@@ -73,7 +73,7 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildSidebar(BuildContext context, WidgetRef ref) {
     const slateNavy = Color(0xFF1A202C);
-    const primaryRed = Color(0xFFD81B60);
+    const primaryRed = Color(0xFFE4284C);
     final currentSection = ref.watch(navProvider);
 
     return Container(
