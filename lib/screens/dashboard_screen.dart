@@ -69,13 +69,16 @@ class DashboardScreen extends ConsumerWidget {
                   child: const Icon(Icons.school, color: Colors.white, size: 24),
                 ),
                 const SizedBox(width: 16),
-                Text(
-                  'IELTS UNIVERSITY',
-                  style: GoogleFonts.montserrat(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    letterSpacing: 1.2,
+                Expanded(
+                  child: Text(
+                    'IELTS UNIVERSITY',
+                    style: GoogleFonts.montserrat(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      letterSpacing: 1.2,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -102,12 +105,15 @@ class DashboardScreen extends ConsumerWidget {
                     child: Text('A', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
                   ),
                   const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Admin User', style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                      Text('Master Account', style: GoogleFonts.montserrat(color: Colors.white54, fontSize: 11)),
-                    ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Admin User', style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13), overflow: TextOverflow.ellipsis),
+                        Text('Master Account', style: GoogleFonts.montserrat(color: Colors.white54, fontSize: 11), overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
                   ),
                 ],
               ),

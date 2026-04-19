@@ -3,6 +3,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/login_screen.dart';
+import 'providers/auth_provider.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -24,14 +26,16 @@ void main() async {
   );
 }
 
-class IELTSUniversityAdminWeb extends StatelessWidget {
+class IELTSUniversityAdminWeb extends ConsumerWidget {
   const IELTSUniversityAdminWeb({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     const primaryRed = Color(0xFFD81B60);
     const slateNavy = Color(0xFF1A202C);
     const scaffoldBg = Color(0xFFF7FAFC);
+
+    final isAuthenticated = ref.watch(authProvider);
 
     return MaterialApp(
       title: 'IELTS University Admin',
@@ -60,6 +64,14 @@ class IELTSUniversityAdminWeb extends StatelessWidget {
           elevation: 0,
           centerTitle: false,
         ),
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[200]!)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[200]!)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: primaryRed, width: 2)),
+          filled: true,
+          fillColor: const Color(0xFFF7FAFC),
+          contentPadding: const EdgeInsets.all(20),
+        ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: primaryRed,
@@ -70,7 +82,7 @@ class IELTSUniversityAdminWeb extends StatelessWidget {
           ),
         ),
       ),
-      home: const DashboardScreen(),
+      home: isAuthenticated ? DashboardScreen() : LoginScreen(),
     );
   }
 }
