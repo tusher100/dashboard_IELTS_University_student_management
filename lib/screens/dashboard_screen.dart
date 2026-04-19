@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/models.dart';
 import '../providers/admin_provider.dart';
+import '../providers/nav_provider.dart';
+import '../providers/auth_provider.dart';
 import '../services/pdf_service.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -10,32 +12,20 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final currentSection = ref.watch(navProvider);
+
     return Scaffold(
       body: Row(
         children: [
-          _buildSidebar(context),
+          _buildSidebar(context, ref),
           Expanded(
             child: Column(
               children: [
-                _buildHeader(ref),
+                _buildHeader(ref, currentSection),
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildStatsRow(ref),
-                        const SizedBox(height: 32),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(flex: 2, child: _buildEnrollmentTable(ref)),
-                            const SizedBox(width: 32),
-                            Expanded(flex: 1, child: _buildReceiptSection(ref)),
-                          ],
-                        ),
-                      ],
-                    ),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: _buildSectionContent(ref, currentSection),
                   ),
                 ),
               ],
@@ -46,9 +36,45 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSidebar(BuildContext context) {
+  Widget _buildSectionContent(WidgetRef ref, DashboardSection section) {
+    switch (section) {
+      case DashboardSection.dashboard:
+        return _buildDashboardHome(ref);
+      case DashboardSection.students:
+        return _buildStudentsView(ref);
+      case DashboardSection.payments:
+        return _buildPaymentsView(ref);
+      case DashboardSection.settings:
+        return _buildSettingsView(ref);
+    }
+  }
+
+  Widget _buildDashboardHome(WidgetRef ref) {
+    return SingleChildScrollView(
+      key: const ValueKey('dashboard'),
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildStatsRow(ref),
+          const SizedBox(height: 32),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 2, child: _buildEnrollmentTable(ref, 'Recent Enrollments')),
+              const SizedBox(width: 32),
+              Expanded(flex: 1, child: _buildReceiptSection(ref)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebar(BuildContext context, WidgetRef ref) {
     const slateNavy = Color(0xFF1A202C);
     const primaryRed = Color(0xFFD81B60);
+    final currentSection = ref.watch(navProvider);
 
     return Container(
       width: 280,
@@ -85,10 +111,10 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 48),
-          _buildSidebarItem(Icons.dashboard_rounded, 'Dashboard', true),
-          _buildSidebarItem(Icons.people_alt_rounded, 'Students', false),
-          _buildSidebarItem(Icons.receipt_long_rounded, 'Payments', false),
-          _buildSidebarItem(Icons.settings_suggest_rounded, 'Settings', false),
+          _buildSidebarItem(ref, Icons.dashboard_rounded, 'Dashboard', DashboardSection.dashboard, currentSection == DashboardSection.dashboard),
+          _buildSidebarItem(ref, Icons.people_alt_rounded, 'Students', DashboardSection.students, currentSection == DashboardSection.students),
+          _buildSidebarItem(ref, Icons.receipt_long_rounded, 'Payments', DashboardSection.payments, currentSection == DashboardSection.payments),
+          _buildSidebarItem(ref, Icons.settings_suggest_rounded, 'Settings', DashboardSection.settings, currentSection == DashboardSection.settings),
           const Spacer(),
           Padding(
             padding: const EdgeInsets.all(24.0),
@@ -124,7 +150,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSidebarItem(IconData icon, String label, bool isActive) {
+  Widget _buildSidebarItem(WidgetRef ref, IconData icon, String label, DashboardSection section, bool isActive) {
     const primaryRed = Color(0xFFD81B60);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4),
@@ -143,13 +169,21 @@ class DashboardScreen extends ConsumerWidget {
               fontSize: 14,
             ),
           ),
-          onTap: () {},
+          onTap: () => ref.read(navProvider.notifier).setSection(section),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(WidgetRef ref) {
+  Widget _buildHeader(WidgetRef ref, DashboardSection section) {
+    String title;
+    switch (section) {
+      case DashboardSection.dashboard: title = 'Enrollment Overview'; break;
+      case DashboardSection.students: title = 'Student Management'; break;
+      case DashboardSection.payments: title = 'Financial Records'; break;
+      case DashboardSection.settings: title = 'System Settings'; break;
+    }
+
     return Container(
       height: 80,
       padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -160,7 +194,7 @@ class DashboardScreen extends ConsumerWidget {
       child: Row(
         children: [
           Text(
-            'Enrollment Overview',
+            title,
             style: GoogleFonts.montserrat(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -168,23 +202,24 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
           const Spacer(),
-          SizedBox(
-            width: 300,
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search students...',
-                prefixIcon: const Icon(Icons.search, size: 20),
-                filled: true,
-                fillColor: const Color(0xFFF7FAFC),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+          if (section != DashboardSection.settings)
+            SizedBox(
+              width: 300,
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search...',
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  filled: true,
+                  fillColor: const Color(0xFFF7FAFC),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                onChanged: (val) => ref.read(searchQueryProvider.notifier).state = val,
               ),
-              onChanged: (val) => ref.read(searchQueryProvider.notifier).state = val,
             ),
-          ),
           const SizedBox(width: 24),
           const Icon(Icons.notifications_none_rounded, color: Color(0xFF4A5568)),
         ],
@@ -242,7 +277,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEnrollmentTable(WidgetRef ref) {
+  Widget _buildEnrollmentTable(WidgetRef ref, String title) {
     final studentsAsync = ref.watch(filteredStudentsProvider);
 
     return Card(
@@ -252,7 +287,7 @@ class DashboardScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.all(24.0),
             child: Text(
-              'Recent Enrollments',
+              title,
               style: GoogleFonts.montserrat(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1A202C)),
             ),
           ),
@@ -394,6 +429,90 @@ class DashboardScreen extends ConsumerWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('CLOSE'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStudentsView(WidgetRef ref) {
+    return Padding(
+      key: const ValueKey('students'),
+      padding: const EdgeInsets.all(32),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(flex: 2, child: _buildEnrollmentTable(ref, 'All Registered Students')),
+          const SizedBox(width: 32),
+          Expanded(flex: 1, child: _buildReceiptSection(ref)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentsView(WidgetRef ref) {
+    return SingleChildScrollView(
+      key: const ValueKey('payments'),
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              _buildStatCard('Total Collected', '\$48,900', Icons.payments_rounded, Colors.teal),
+              const SizedBox(width: 24),
+              _buildStatCard('Pending Dues', '\$4,200', Icons.pending_actions_rounded, Colors.orange),
+              const SizedBox(width: 24),
+              _buildStatCard('Refunds', '\$120', Icons.undo_rounded, Colors.red),
+            ],
+          ),
+          const SizedBox(height: 32),
+          _buildEnrollmentTable(ref, 'Payment Log History'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsView(WidgetRef ref) {
+    return Center(
+      key: const ValueKey('settings'),
+      child: Container(
+        width: 600,
+        padding: const EdgeInsets.all(48),
+        child: Column(
+          children: [
+            const CircleAvatar(
+              radius: 64,
+              backgroundColor: Color(0xFF1A202C),
+              child: Icon(Icons.person, color: Colors.white, size: 64),
+            ),
+            const SizedBox(height: 24),
+            Text('Admin Authority', style: GoogleFonts.montserrat(fontSize: 24, fontWeight: FontWeight.bold)),
+            const Text('Super Admin Role', style: TextStyle(color: Colors.black45)),
+            const SizedBox(height: 48),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.lock_outline),
+              title: const Text('Change Security Password'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {},
+            ),
+            ListTile(
+              leading: const Icon(Icons.color_lens_outlined),
+              title: const Text('Dashboard Theme'),
+              trailing: const Text('Light Mode'),
+              onTap: () {},
+            ),
+            const SizedBox(height: 48),
+            ElevatedButton(
+              onPressed: () => ref.read(authProvider.notifier).logout(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.withOpacity(0.1),
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+                minimumSize: const Size(double.infinity, 56),
+              ),
+              child: const Text('LOGOUT FROM SYSTEM'),
             ),
           ],
         ),
