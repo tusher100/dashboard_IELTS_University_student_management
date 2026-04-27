@@ -52,6 +52,7 @@ class StudentModel {
   final double discount;
   final String courseDuration;
   final DateTime? createdAt;
+  final bool isApproved;
 
   StudentModel({
     this.id,
@@ -76,6 +77,7 @@ class StudentModel {
     required this.discount,
     required this.courseDuration,
     this.createdAt,
+    this.isApproved = true,
   });
 
   factory StudentModel.fromFirestore(DocumentSnapshot doc) {
@@ -103,6 +105,7 @@ class StudentModel {
       discount: (data['discount'] ?? 0.0).toDouble(),
       courseDuration: data['courseDuration'] ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
+      isApproved: data['isApproved'] ?? true,
     );
   }
 
@@ -128,6 +131,7 @@ class StudentModel {
       'dueAmount': dueAmount,
       'discount': discount,
       'courseDuration': courseDuration,
+      'isApproved': isApproved,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
     };
   }

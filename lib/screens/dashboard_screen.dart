@@ -8,6 +8,7 @@ import 'receipts_view.dart';
 import 'student_directory.dart';
 import 'course_results.dart';
 import 'analytics_view.dart';
+import 'pending_approvals_view.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -45,18 +46,13 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildSectionContent(WidgetRef ref, DashboardSection section) {
     switch (section) {
-      case DashboardSection.registration:
-        return const RegistrationForm(key: ValueKey('registration'));
-      case DashboardSection.receipts:
-        return const ReceiptsView(key: ValueKey('receipts'));
-      case DashboardSection.students:
-        return const StudentDirectory(key: ValueKey('students'));
-      case DashboardSection.results:
-        return const CourseResultsView(key: ValueKey('results'));
-      case DashboardSection.analytics:
-        return const AnalyticsView(key: ValueKey('analytics'));
-      case DashboardSection.settings:
-        return _buildSettingsView(ref);
+      case DashboardSection.registration: return const RegistrationForm(key: ValueKey('registration'));
+      case DashboardSection.receipts: return const ReceiptsView(key: ValueKey('receipts'));
+      case DashboardSection.students: return const StudentDirectory(key: ValueKey('students'));
+      case DashboardSection.results: return const CourseResultsView(key: ValueKey('results'));
+      case DashboardSection.analytics: return const AnalyticsView(key: ValueKey('analytics'));
+      case DashboardSection.pending: return const PendingApprovalsView(key: ValueKey('pending'));
+      case DashboardSection.settings: return _buildSettingsView(ref);
     }
   }
 
@@ -101,6 +97,7 @@ class DashboardScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 48),
           _buildSidebarItem(context, ref, Icons.app_registration_rounded, 'Registration', DashboardSection.registration, currentSection == DashboardSection.registration, asDrawer),
+          _buildSidebarItem(context, ref, Icons.pending_actions_rounded, 'Approvals', DashboardSection.pending, currentSection == DashboardSection.pending, asDrawer),
           _buildSidebarItem(context, ref, Icons.receipt_long_rounded, 'Receipts', DashboardSection.receipts, currentSection == DashboardSection.receipts, asDrawer),
           _buildSidebarItem(context, ref, Icons.people_alt_rounded, 'Directory', DashboardSection.students, currentSection == DashboardSection.students, asDrawer),
           _buildSidebarItem(context, ref, Icons.bar_chart_rounded, 'Results', DashboardSection.results, currentSection == DashboardSection.results, asDrawer),
@@ -141,6 +138,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
+
   Widget _buildSidebarItem(BuildContext context, WidgetRef ref, IconData icon, String label, DashboardSection section, bool isActive, bool asDrawer) {
     const primaryRed = Color(0xFFE4284C);
     return Padding(
@@ -177,6 +175,7 @@ class DashboardScreen extends ConsumerWidget {
       case DashboardSection.students: title = 'Student Directory'; break;
       case DashboardSection.results: title = 'Course Results'; break;
       case DashboardSection.analytics: title = 'System Analytics'; break;
+      case DashboardSection.pending: title = 'Pending Approvals'; break;
       case DashboardSection.settings: title = 'System Settings'; break;
     }
 

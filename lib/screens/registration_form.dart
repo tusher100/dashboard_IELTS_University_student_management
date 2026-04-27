@@ -7,7 +7,8 @@ import '../providers/admin_provider.dart';
 import '../services/pdf_service.dart';
 
 class RegistrationForm extends ConsumerStatefulWidget {
-  const RegistrationForm({super.key});
+  final bool isPublic;
+  const RegistrationForm({super.key, this.isPublic = false});
 
   @override
   ConsumerState<RegistrationForm> createState() => _RegistrationFormState();
@@ -102,27 +103,51 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
       dueAmount: _dueAmount,
       discount: double.tryParse(_discountController.text) ?? 0,
       courseDuration: _courseDuration,
+      isApproved: !widget.isPublic,
     );
 
     try {
-      await ref.read(adminProvider).addStudent(student);
+      await ref.read(adminActionProvider.notifier).addStudent(student);
       
-      // Part Two: Generate Receipt
-      ref.read(isPdfGeneratingProvider.notifier).update(true);
-      try {
-        await PdfService.generateAndPrintReceipt(student);
-      } finally {
-        ref.read(isPdfGeneratingProvider.notifier).update(false);
+      if (!context.mounted) return;
+
+      if (widget.isPublic) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text('Registration Submitted'),
+            content: const Text('Your admission form has been received and is pending approval. Our authority will contact you soon.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        ref.read(isPdfGeneratingProvider.notifier).update(true);
+        try {
+          await PdfService.generateAndPrintReceipt(student);
+        } finally {
+          ref.read(isPdfGeneratingProvider.notifier).update(false);
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Student registered successfully!')),
+        );
+        _resetForm();
       }
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Student registered successfully!')),
-      );
-      _resetForm();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     }
   }
 

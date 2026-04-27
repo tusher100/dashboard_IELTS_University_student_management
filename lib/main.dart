@@ -6,8 +6,9 @@ import 'screens/dashboard_screen.dart';
 import 'screens/login_screen.dart';
 import 'providers/auth_provider.dart';
 import 'firebase_options.dart';
-
 import 'package:shared_preferences/shared_preferences.dart';
+import 'screens/public_registration_screen.dart';
+import 'providers/admin_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -90,7 +91,9 @@ class IELTSUniversityAdminWeb extends ConsumerWidget {
           ),
         ),
       ),
-      home: isAuthenticated ? DashboardScreen() : LoginScreen(),
+      home: ref.watch(publicViewProvider) 
+            ? const PublicRegistrationScreen() 
+            : (isAuthenticated ? const DashboardScreen() : const LoginScreen()),
     );
   }
 }
