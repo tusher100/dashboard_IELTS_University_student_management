@@ -15,23 +15,27 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentSection = ref.watch(navProvider);
+    final isMobile = MediaQuery.of(context).size.width < 1000;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7FAFC),
+      drawer: isMobile ? _buildSidebar(context, ref, asDrawer: true) : null,
       body: Row(
         children: [
-          _buildSidebar(context, ref),
+          if (!isMobile) _buildSidebar(context, ref),
           Expanded(
-            child: Column(
-              children: [
-                _buildHeader(ref, currentSection),
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: _buildSectionContent(ref, currentSection),
+            child: Builder(
+              builder: (context) => Column(
+                children: [
+                  _buildHeader(context, ref, currentSection, isMobile),
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: _buildSectionContent(ref, currentSection),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -56,7 +60,7 @@ class DashboardScreen extends ConsumerWidget {
     }
   }
 
-  Widget _buildSidebar(BuildContext context, WidgetRef ref) {
+  Widget _buildSidebar(BuildContext context, WidgetRef ref, {bool asDrawer = false}) {
     const slateNavy = Color(0xFF1A202C);
     const primaryRed = Color(0xFFE4284C);
     final currentSection = ref.watch(navProvider);
@@ -96,12 +100,12 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 48),
-          _buildSidebarItem(ref, Icons.app_registration_rounded, 'Registration', DashboardSection.registration, currentSection == DashboardSection.registration),
-          _buildSidebarItem(ref, Icons.receipt_long_rounded, 'Receipts', DashboardSection.receipts, currentSection == DashboardSection.receipts),
-          _buildSidebarItem(ref, Icons.people_alt_rounded, 'Directory', DashboardSection.students, currentSection == DashboardSection.students),
-          _buildSidebarItem(ref, Icons.bar_chart_rounded, 'Results', DashboardSection.results, currentSection == DashboardSection.results),
-          _buildSidebarItem(ref, Icons.insights_rounded, 'Analytics', DashboardSection.analytics, currentSection == DashboardSection.analytics),
-          _buildSidebarItem(ref, Icons.settings_suggest_rounded, 'Settings', DashboardSection.settings, currentSection == DashboardSection.settings),
+          _buildSidebarItem(context, ref, Icons.app_registration_rounded, 'Registration', DashboardSection.registration, currentSection == DashboardSection.registration, asDrawer),
+          _buildSidebarItem(context, ref, Icons.receipt_long_rounded, 'Receipts', DashboardSection.receipts, currentSection == DashboardSection.receipts, asDrawer),
+          _buildSidebarItem(context, ref, Icons.people_alt_rounded, 'Directory', DashboardSection.students, currentSection == DashboardSection.students, asDrawer),
+          _buildSidebarItem(context, ref, Icons.bar_chart_rounded, 'Results', DashboardSection.results, currentSection == DashboardSection.results, asDrawer),
+          _buildSidebarItem(context, ref, Icons.insights_rounded, 'Analytics', DashboardSection.analytics, currentSection == DashboardSection.analytics, asDrawer),
+          _buildSidebarItem(context, ref, Icons.settings_suggest_rounded, 'Settings', DashboardSection.settings, currentSection == DashboardSection.settings, asDrawer),
           const Spacer(),
           Padding(
             padding: const EdgeInsets.all(24.0),
@@ -137,7 +141,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSidebarItem(WidgetRef ref, IconData icon, String label, DashboardSection section, bool isActive) {
+  Widget _buildSidebarItem(BuildContext context, WidgetRef ref, IconData icon, String label, DashboardSection section, bool isActive, bool asDrawer) {
     const primaryRed = Color(0xFFE4284C);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4),
@@ -156,13 +160,16 @@ class DashboardScreen extends ConsumerWidget {
               fontSize: 14,
             ),
           ),
-          onTap: () => ref.read(navProvider.notifier).setSection(section),
+          onTap: () {
+            ref.read(navProvider.notifier).setSection(section);
+            if (asDrawer) Navigator.pop(context);
+          },
         ),
       ),
     );
   }
 
-  Widget _buildHeader(WidgetRef ref, DashboardSection section) {
+  Widget _buildHeader(BuildContext context, WidgetRef ref, DashboardSection section, bool isMobile) {
     String title;
     switch (section) {
       case DashboardSection.registration: title = 'Student Registration'; break;
@@ -175,21 +182,31 @@ class DashboardScreen extends ConsumerWidget {
 
     return Container(
       height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 32),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Color(0xFFEDF2F7))),
       ),
       child: Row(
         children: [
-          Text(
-            title,
-            style: GoogleFonts.montserrat(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF1A202C),
+          if (isMobile) 
+            IconButton(
+              icon: const Icon(Icons.menu), 
+              onPressed: () => Scaffold.of(context).openDrawer()
+            ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              title,
+              style: GoogleFonts.montserrat(
+                fontSize: isMobile ? 16 : 20,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF1A202C),
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
+
           const Spacer(),
           const Icon(Icons.notifications_none_rounded, color: Color(0xFF4A5568)),
           const SizedBox(width: 24),

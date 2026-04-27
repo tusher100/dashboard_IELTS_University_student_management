@@ -12,23 +12,24 @@ class StudentDirectory extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final studentsAsync = ref.watch(filteredStudentsProvider);
 
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 800;
+
+        return Padding(
+          padding: EdgeInsets.all(isMobile ? 16 : 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Student Records',
-                style: GoogleFonts.montserrat(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF1A202C)),
-              ),
-              const Spacer(),
-              SizedBox(
-                width: 300,
-                child: TextField(
+              if (isMobile) ...[
+                Text(
+                  'Student Records',
+                  style: GoogleFonts.montserrat(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF1A202C)),
+                ),
+                const SizedBox(height: 16),
+                TextField(
                   decoration: InputDecoration(
-                    hintText: 'Search by name or mobile...',
+                    hintText: 'Search...',
                     prefixIcon: const Icon(Icons.search),
                     filled: true,
                     fillColor: Colors.white,
@@ -36,23 +37,45 @@ class StudentDirectory extends ConsumerWidget {
                   ),
                   onChanged: (val) => ref.read(searchQueryProvider.notifier).update(val),
                 ),
+              ] else
+                Row(
+                  children: [
+                    Text(
+                      'Student Records',
+                      style: GoogleFonts.montserrat(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF1A202C)),
+                    ),
+                    const Spacer(),
+                    SizedBox(
+                      width: 300,
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Search by name or mobile...',
+                          prefixIcon: const Icon(Icons.search),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        ),
+                        onChanged: (val) => ref.read(searchQueryProvider.notifier).update(val),
+                      ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 32),
+              Expanded(
+                child: studentsAsync.when(
+                  data: (students) => _buildFullListView(context, students, ref, isMobile),
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (err, _) => Center(child: Text('Error: $err')),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 32),
-          Expanded(
-            child: studentsAsync.when(
-              data: (students) => _buildFullListView(context, students, ref),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(child: Text('Error: $err')),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildFullListView(BuildContext context, List<StudentModel> students, WidgetRef ref) {
+  Widget _buildFullListView(BuildContext context, List<StudentModel> students, WidgetRef ref, bool isMobile) {
     if (students.isEmpty) {
       return Center(
         child: Column(
@@ -70,18 +93,18 @@ class StudentDirectory extends ConsumerWidget {
       itemCount: students.length,
       itemBuilder: (context, index) {
         final student = students[index];
-        return _buildStudentCard(context, student, ref);
+        return _buildStudentCard(context, student, ref, isMobile);
       },
     );
   }
 
-  Widget _buildStudentCard(BuildContext context, StudentModel student, WidgetRef ref) {
+  Widget _buildStudentCard(BuildContext context, StudentModel student, WidgetRef ref, bool isMobile) {
     return Card(
       margin: const EdgeInsets.only(bottom: 24),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(isMobile ? 16 : 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -89,18 +112,18 @@ class StudentDirectory extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CircleAvatar(
-                  radius: 30,
+                  radius: isMobile ? 24 : 30,
                   backgroundColor: const Color(0xFFE4284C).withOpacity(0.1),
-                  child: Text(student.fullName[0], style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFE4284C))),
+                  child: Text(student.fullName[0], style: TextStyle(fontSize: isMobile ? 18 : 24, fontWeight: FontWeight.bold, color: const Color(0xFFE4284C))),
                 ),
-                const SizedBox(width: 20),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(student.fullName, style: GoogleFonts.montserrat(fontSize: 20, fontWeight: FontWeight.bold)),
+                      Text(student.fullName, style: GoogleFonts.montserrat(fontSize: isMobile ? 16 : 20, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
-                      Text('Enrolled on: ${DateFormat('dd MMMM yyyy').format(student.date)}', style: const TextStyle(color: Colors.grey)),
+                      Text('Enrolled: ${DateFormat('dd MMM yy').format(student.date)}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                     ],
                   ),
                 ),
@@ -113,7 +136,7 @@ class StudentDirectory extends ConsumerWidget {
             ),
             const Divider(height: 32),
             Wrap(
-              spacing: 48,
+              spacing: isMobile ? 16 : 48,
               runSpacing: 24,
               children: [
                 _infoGroup('PERSONAL', [
@@ -121,30 +144,30 @@ class StudentDirectory extends ConsumerWidget {
                   _infoItem('DOB', DateFormat('dd-MM-yyyy').format(student.dob)),
                   _infoItem('Mobile', student.mobileNumber),
                   _infoItem('Email', student.email),
-                ]),
+                ], isMobile),
                 _infoGroup('EDUCATION', [
                   _infoItem('Institution', student.educationalInstitution),
                   _infoItem('Subject', student.subject),
                   _infoItem('R/A', student.ra),
-                ]),
+                ], isMobile),
                 _infoGroup('COURSE', [
                   _infoItem('Course Name', student.course),
                   _infoItem('Batch', student.batchName),
                   _infoItem('Time', student.time),
                   _infoItem('Duration', student.courseDuration),
-                ]),
+                ], isMobile),
                 _infoGroup('GUARDIAN', [
                   _infoItem('Guardian Name', student.guardianName),
                   _infoItem('Relation', student.relation),
                   _infoItem('Source', student.source),
-                ]),
+                ], isMobile),
                 _infoGroup('PAYMENT', [
                   _infoItem('Total Amount', 'Tk ${student.totalAmount.toStringAsFixed(0)}'),
                   _infoItem('Paid Amount', 'Tk ${student.paidAmount.toStringAsFixed(0)}'),
                   _infoItem('Discount', 'Tk ${student.discount.toStringAsFixed(0)}'),
                   _infoItem('Due Balance', 'Tk ${student.dueAmount.toStringAsFixed(0)}', 
                     valueColor: student.dueAmount > 0 ? Colors.red : Colors.green),
-                ]),
+                ], isMobile),
               ],
             ),
           ],
@@ -153,13 +176,13 @@ class StudentDirectory extends ConsumerWidget {
     );
   }
 
-  Widget _infoGroup(String title, List<Widget> items) {
+  Widget _infoGroup(String title, List<Widget> items, bool isMobile) {
     return SizedBox(
-      width: 220,
+      width: isMobile ? 140 : 220,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+          Text(title, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
           const SizedBox(height: 8),
           ...items,
         ],

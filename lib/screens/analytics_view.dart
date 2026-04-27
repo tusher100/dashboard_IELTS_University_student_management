@@ -11,27 +11,37 @@ class AnalyticsView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final studentsAsync = ref.watch(studentsStreamProvider);
 
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Business Analytics',
-            style: GoogleFonts.montserrat(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF1A202C)),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 800;
+        
+        return Padding(
+          padding: EdgeInsets.all(isMobile ? 16 : 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Business Analytics',
+                style: GoogleFonts.montserrat(
+                  fontSize: isMobile ? 20 : 24, 
+                  fontWeight: FontWeight.bold, 
+                  color: const Color(0xFF1A202C)
+                ),
+              ),
+              const SizedBox(height: 32),
+              studentsAsync.when(
+                data: (students) => Expanded(child: _buildDashboard(students, isMobile)),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, _) => Center(child: Text('Error: $err')),
+              ),
+            ],
           ),
-          const SizedBox(height: 32),
-          studentsAsync.when(
-            data: (students) => Expanded(child: _buildDashboard(students)),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, _) => Center(child: Text('Error: $err')),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildDashboard(List<StudentModel> students) {
+  Widget _buildDashboard(List<StudentModel> students, bool isMobile) {
     final totalRevenue = students.fold<double>(0, (sum, s) => sum + s.paidAmount);
     final totalStudents = students.length;
 
@@ -45,18 +55,24 @@ class AnalyticsView extends ConsumerWidget {
 
     return Column(
       children: [
-        Row(
-          children: [
-            _buildMetricCard('Total Students', totalStudents.toString(), Icons.people, Colors.blue),
-            const SizedBox(width: 24),
-            _buildMetricCard('Total Revenue', 'Tk ${totalRevenue.toStringAsFixed(0)}', Icons.payments, Colors.green),
-          ],
-        ),
+        if (isMobile) ...[
+          _buildMetricCard('Total Students', totalStudents.toString(), Icons.people, Colors.blue),
+          const SizedBox(height: 16),
+          _buildMetricCard('Total Revenue', 'Tk ${totalRevenue.toStringAsFixed(0)}', Icons.payments, Colors.green),
+        ] else
+          Row(
+            children: [
+              _buildMetricCard('Total Students', totalStudents.toString(), Icons.people, Colors.blue),
+              const SizedBox(width: 24),
+              _buildMetricCard('Total Revenue', 'Tk ${totalRevenue.toStringAsFixed(0)}', Icons.payments, Colors.green),
+            ],
+          ),
         const SizedBox(height: 32),
         Expanded(
           child: Card(
+             margin: EdgeInsets.zero,
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(isMobile ? 16 : 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -69,10 +85,11 @@ class AnalyticsView extends ConsumerWidget {
                         final course = courseStats.keys.elementAt(index);
                         final stat = courseStats[course]!;
                         return ListTile(
-                          title: Text(course, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text('${stat.studentCount} Students'),
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(course, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          subtitle: Text('${stat.studentCount} Students', style: const TextStyle(fontSize: 11)),
                           trailing: Text('Tk ${stat.revenue.toStringAsFixed(0)}', 
-                            style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16)),
+                            style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14)),
                         );
                       },
                     ),
