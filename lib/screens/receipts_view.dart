@@ -34,7 +34,7 @@ class ReceiptsView extends ConsumerWidget {
                     fillColor: Colors.white,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   ),
-                  onChanged: (val) => ref.read(searchQueryProvider.notifier).state = val,
+                  onChanged: (val) => ref.read(searchQueryProvider.notifier).update(val),
                 ),
               ),
             ],

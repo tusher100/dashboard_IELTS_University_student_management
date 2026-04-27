@@ -7,6 +7,7 @@ import 'registration_form.dart';
 import 'receipts_view.dart';
 import 'student_directory.dart';
 import 'course_results.dart';
+import 'analytics_view.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -48,6 +49,8 @@ class DashboardScreen extends ConsumerWidget {
         return const StudentDirectory(key: ValueKey('students'));
       case DashboardSection.results:
         return const CourseResultsView(key: ValueKey('results'));
+      case DashboardSection.analytics:
+        return const AnalyticsView(key: ValueKey('analytics'));
       case DashboardSection.settings:
         return _buildSettingsView(ref);
     }
@@ -97,6 +100,7 @@ class DashboardScreen extends ConsumerWidget {
           _buildSidebarItem(ref, Icons.receipt_long_rounded, 'Receipts', DashboardSection.receipts, currentSection == DashboardSection.receipts),
           _buildSidebarItem(ref, Icons.people_alt_rounded, 'Directory', DashboardSection.students, currentSection == DashboardSection.students),
           _buildSidebarItem(ref, Icons.bar_chart_rounded, 'Results', DashboardSection.results, currentSection == DashboardSection.results),
+          _buildSidebarItem(ref, Icons.insights_rounded, 'Analytics', DashboardSection.analytics, currentSection == DashboardSection.analytics),
           _buildSidebarItem(ref, Icons.settings_suggest_rounded, 'Settings', DashboardSection.settings, currentSection == DashboardSection.settings),
           const Spacer(),
           Padding(
@@ -165,6 +169,7 @@ class DashboardScreen extends ConsumerWidget {
       case DashboardSection.receipts: title = 'Payments & Receipts'; break;
       case DashboardSection.students: title = 'Student Directory'; break;
       case DashboardSection.results: title = 'Course Results'; break;
+      case DashboardSection.analytics: title = 'System Analytics'; break;
       case DashboardSection.settings: title = 'System Settings'; break;
     }
 

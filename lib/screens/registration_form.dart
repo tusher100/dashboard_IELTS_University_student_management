@@ -108,7 +108,12 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
       await ref.read(adminProvider).addStudent(student);
       
       // Part Two: Generate Receipt
-      await PdfService.generateAndPrintReceipt(student);
+      ref.read(isPdfGeneratingProvider.notifier).update(true);
+      try {
+        await PdfService.generateAndPrintReceipt(student);
+      } finally {
+        ref.read(isPdfGeneratingProvider.notifier).update(false);
+      }
       
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Student registered successfully!')),

@@ -16,7 +16,7 @@ final studentsStreamProvider = StreamProvider<List<StudentModel>>((ref) {
 class SearchQueryNotifier extends Notifier<String> {
   @override
   String build() => '';
-  set state(String value) => state = value;
+  void update(String value) => state = value;
 }
 
 final searchQueryProvider = NotifierProvider<SearchQueryNotifier, String>(SearchQueryNotifier.new);
@@ -37,7 +37,7 @@ final filteredStudentsProvider = Provider<AsyncValue<List<StudentModel>>>((ref) 
 class SelectedStudentNotifier extends Notifier<StudentModel?> {
   @override
   StudentModel? build() => null;
-  void select(StudentModel? student) => state = student;
+  void update(StudentModel? student) => state = student;
 }
 
 final selectedStudentProvider = NotifierProvider<SelectedStudentNotifier, StudentModel?>(SelectedStudentNotifier.new);
@@ -45,7 +45,7 @@ final selectedStudentProvider = NotifierProvider<SelectedStudentNotifier, Studen
 class PdfGeneratingNotifier extends Notifier<bool> {
   @override
   bool build() => false;
-  set state(bool value) => state = value;
+  void update(bool value) => state = value;
 }
 
 final isPdfGeneratingProvider = NotifierProvider<PdfGeneratingNotifier, bool>(PdfGeneratingNotifier.new);

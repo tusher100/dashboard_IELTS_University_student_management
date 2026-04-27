@@ -8,5 +8,9 @@ class DatabaseService {
     await _db.collection('students').add(student.toFirestore());
   }
 
+  Future<void> deleteStudent(String id) async {
+    await _db.collection('students').doc(id).delete();
+  }
+
   // Add other operations as needed
 }

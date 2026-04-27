@@ -20,7 +20,7 @@ class StudentDirectory extends ConsumerWidget {
           Row(
             children: [
               Text(
-                'Student Directory',
+                'Student Records',
                 style: GoogleFonts.montserrat(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF1A202C)),
               ),
               const Spacer(),
@@ -34,19 +34,17 @@ class StudentDirectory extends ConsumerWidget {
                     fillColor: Colors.white,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   ),
-                  onChanged: (val) => ref.read(searchQueryProvider.notifier).state = val,
+                  onChanged: (val) => ref.read(searchQueryProvider.notifier).update(val),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 32),
           Expanded(
-            child: Card(
-              child: studentsAsync.when(
-                data: (students) => _buildTable(students, context),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, _) => Center(child: Text('Error: $err')),
-              ),
+            child: studentsAsync.when(
+              data: (students) => _buildFullListView(context, students, ref),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, _) => Center(child: Text('Error: $err')),
             ),
           ),
         ],
@@ -54,85 +52,155 @@ class StudentDirectory extends ConsumerWidget {
     );
   }
 
-  Widget _buildTable(List<StudentModel> students, BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SingleChildScrollView(
-        child: DataTable(
-          headingRowHeight: 60,
-          dataRowHeight: 70,
-          columns: const [
-            DataColumn(label: Text('DATE')),
-            DataColumn(label: Text('NAME')),
-            DataColumn(label: Text('MOBILE')),
-            DataColumn(label: Text('COURSE')),
-            DataColumn(label: Text('BATCH')),
-            DataColumn(label: Text('DUE')),
-            DataColumn(label: Text('GDR')),
-            DataColumn(label: Text('INSTITUTION')),
+  Widget _buildFullListView(BuildContext context, List<StudentModel> students, WidgetRef ref) {
+    if (students.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.people_outline, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text('No students found', style: GoogleFonts.montserrat(color: Colors.grey, fontSize: 18)),
           ],
-          rows: students.map((student) {
-            return DataRow(
-              onSelectChanged: (_) => _showDetails(context, student),
-              cells: [
-                DataCell(Text(DateFormat('dd-MM-yy').format(student.date))),
-                DataCell(Text(student.fullName, style: const TextStyle(fontWeight: FontWeight.bold))),
-                DataCell(Text(student.mobileNumber)),
-                DataCell(Text(student.course)),
-                DataCell(Text(student.batchName)),
-                DataCell(Text('Tk ${student.dueAmount.toStringAsFixed(0)}', 
-                  style: TextStyle(color: student.dueAmount > 0 ? Colors.red : Colors.green, fontWeight: FontWeight.bold))),
-                DataCell(Text(student.gender[0])),
-                DataCell(Text(student.educationalInstitution)),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: students.length,
+      itemBuilder: (context, index) {
+        final student = students[index];
+        return _buildStudentCard(context, student, ref);
+      },
+    );
+  }
+
+  Widget _buildStudentCard(BuildContext context, StudentModel student, WidgetRef ref) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 24),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: const Color(0xFFE4284C).withOpacity(0.1),
+                  child: Text(student.fullName[0], style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFE4284C))),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(student.fullName, style: GoogleFonts.montserrat(fontSize: 20, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Text('Enrolled on: ${DateFormat('dd MMMM yyyy').format(student.date)}', style: const TextStyle(color: Colors.grey)),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => _confirmDelete(context, student, ref),
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  tooltip: 'Delete Record',
+                ),
               ],
-            );
-          }).toList(),
+            ),
+            const Divider(height: 32),
+            Wrap(
+              spacing: 48,
+              runSpacing: 24,
+              children: [
+                _infoGroup('PERSONAL', [
+                  _infoItem('Gender', student.gender),
+                  _infoItem('DOB', DateFormat('dd-MM-yyyy').format(student.dob)),
+                  _infoItem('Mobile', student.mobileNumber),
+                  _infoItem('Email', student.email),
+                ]),
+                _infoGroup('EDUCATION', [
+                  _infoItem('Institution', student.educationalInstitution),
+                  _infoItem('Subject', student.subject),
+                  _infoItem('R/A', student.ra),
+                ]),
+                _infoGroup('COURSE', [
+                  _infoItem('Course Name', student.course),
+                  _infoItem('Batch', student.batchName),
+                  _infoItem('Time', student.time),
+                  _infoItem('Duration', student.courseDuration),
+                ]),
+                _infoGroup('GUARDIAN', [
+                  _infoItem('Guardian Name', student.guardianName),
+                  _infoItem('Relation', student.relation),
+                  _infoItem('Source', student.source),
+                ]),
+                _infoGroup('PAYMENT', [
+                  _infoItem('Total Amount', 'Tk ${student.totalAmount.toStringAsFixed(0)}'),
+                  _infoItem('Paid Amount', 'Tk ${student.paidAmount.toStringAsFixed(0)}'),
+                  _infoItem('Discount', 'Tk ${student.discount.toStringAsFixed(0)}'),
+                  _infoItem('Due Balance', 'Tk ${student.dueAmount.toStringAsFixed(0)}', 
+                    valueColor: student.dueAmount > 0 ? Colors.red : Colors.green),
+                ]),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 
-  void _showDetails(BuildContext context, StudentModel student) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(student.fullName),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _infoTile('ID', student.id ?? 'N/A'),
-              _infoTile('DOB', DateFormat('dd-MM-yyyy').format(student.dob)),
-              _infoTile('Email', student.email),
-              _infoTile('Time', student.time),
-              _infoTile('Subject', student.subject),
-              _infoTile('R/A', student.ra),
-              _infoTile('Source', student.source),
-              _infoTile('Guardian', '${student.guardianName} (${student.relation})'),
-              _infoTile('Paid', 'Tk ${student.paidAmount}'),
-              _infoTile('Total', 'Tk ${student.totalAmount}'),
-              _infoTile('Discount', 'Tk ${student.discount}'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CLOSE')),
+  Widget _infoGroup(String title, List<Widget> items) {
+    return SizedBox(
+      width: 220,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+          const SizedBox(height: 8),
+          ...items,
         ],
       ),
     );
   }
 
-  Widget _infoTile(String label, String value) {
+  Widget _infoItem(String label, String value, {Color? valueColor}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: RichText(
-        text: TextSpan(
-          style: const TextStyle(color: Colors.black, fontSize: 14),
-          children: [
-            TextSpan(text: '$label: ', style: const TextStyle(fontWeight: FontWeight.bold)),
-            TextSpan(text: value),
-          ],
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 10, color: Colors.black38)),
+          Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: valueColor ?? Colors.black87)),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, StudentModel student, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Student?'),
+        content: Text('Are you sure you want to delete the record for ${student.fullName}? This action cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
+          TextButton(
+            onPressed: () async {
+              if (student.id != null) {
+                await ref.read(adminProvider).deleteStudent(student.id!);
+                if (context.mounted) Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Record for ${student.fullName} deleted')),
+                );
+              }
+            },
+            child: const Text('DELETE', style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
   }

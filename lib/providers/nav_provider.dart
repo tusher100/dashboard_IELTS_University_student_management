@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-enum DashboardSection { registration, receipts, students, results, settings }
+enum DashboardSection { registration, receipts, students, results, analytics, settings }
 
 class NavNotifier extends Notifier<DashboardSection> {
   @override
