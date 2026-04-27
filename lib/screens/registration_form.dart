@@ -286,7 +286,10 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
                           minimumSize: Size(isMobile ? double.infinity : 300, 64),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
-                        child: Text('REGISTER & GENERATE RECEIPT', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 16)),
+                        child: Text(
+                          widget.isPublic ? 'SUBMIT ADMISSION FORM' : 'REGISTER & GENERATE RECEIPT', 
+                          style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 16)
+                        ),
                       ),
                     ),
                     const SizedBox(height: 100),
