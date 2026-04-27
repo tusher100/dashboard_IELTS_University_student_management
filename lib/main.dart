@@ -7,8 +7,13 @@ import 'screens/login_screen.dart';
 import 'providers/auth_provider.dart';
 import 'firebase_options.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize SharedPreferences
+  final prefs = await SharedPreferences.getInstance();
   
   try {
     await Firebase.initializeApp(
@@ -20,8 +25,11 @@ void main() async {
   
 
   runApp(
-    const ProviderScope(
-      child: IELTSUniversityAdminWeb(),
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ],
+      child: const IELTSUniversityAdminWeb(),
     ),
   );
 }

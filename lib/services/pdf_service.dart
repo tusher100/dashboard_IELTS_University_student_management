@@ -6,6 +6,10 @@ import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 
 class PdfService {
+  static pw.MemoryImage? _cachedLogo;
+  static pw.Font? _cachedFont;
+  static pw.Font? _cachedBoldFont;
+
   static Future<void> generateAndPrintReceipt(StudentModel student) async {
     final pdf = pw.Document();
     
@@ -13,35 +17,35 @@ class PdfService {
     const primaryRed = PdfColor.fromInt(0xFFE4284C);
     const slateNavy = PdfColor.fromInt(0xFF1A202C);
     
-    // Load Fonts for Unicode support and stability on Web (Roboto is highly compatible)
-    pw.Font? fontRegular;
-    pw.Font? fontBold;
-    try {
-      fontRegular = await fontFromAssetBundle('assets/fonts/Roboto-Regular.ttf');
-      fontBold = await fontFromAssetBundle('assets/fonts/Roboto-Bold.ttf');
-    } catch (e) {
-      print('PDF Font Error: $e');
+    // Attempt to load logo (Robust method for Web with Caching)
+    if (_cachedLogo == null) {
+      try {
+        final ByteData bytes = await rootBundle.load('assets/images/logo.png');
+        _cachedLogo = pw.MemoryImage(bytes.buffer.asUint8List());
+      } catch (e) {
+        print('PDF Logo Error: $e');
+      }
     }
+    final logoImage = _cachedLogo;
 
-    // Attempt to load logo (Robust method for Web)
-    pw.MemoryImage? logoImage;
-    try {
-      final ByteData bytes = await rootBundle.load('assets/images/logo.png');
-      logoImage = pw.MemoryImage(bytes.buffer.asUint8List());
-    } catch (e) {
-      print('PDF Logo Error: $e');
+    final dateStr = DateFormat('dd-MMMM-yyyy').format(student.date);
+    final receiptId = 'IV-${student.mobileNumber.substring(student.mobileNumber.length.clamp(4, 100) - 4)}-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
+
+    // Load Google Fonts for Unicode support (Robust method with Caching)
+    if (_cachedFont == null || _cachedBoldFont == null) {
+      _cachedFont = await PdfGoogleFonts.robotoRegular();
+      _cachedBoldFont = await PdfGoogleFonts.robotoBold();
     }
-
-    final dateStr = DateFormat('dd-MMMM-yyyy').format(student.createdAt ?? DateTime.now());
-    final receiptId = 'IV-${student.mobileNumber.substring(student.mobileNumber.length - 4)}-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
+    final font = _cachedFont!;
+    final boldFont = _cachedBoldFont!;
 
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(40),
         theme: pw.ThemeData.withFont(
-          base: fontRegular,
-          bold: fontBold,
+          base: font,
+          bold: boldFont,
         ),
         build: (pw.Context context) {
           return pw.Column(
@@ -60,7 +64,7 @@ class PdfService {
                           child: pw.Image(logoImage),
                         )
                       else
-                        pw.Text('IELTS VARSITY', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: primaryRed)),
+                        pw.Text('IELTS UNIVERSITY', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: primaryRed)),
                       pw.SizedBox(height: 8),
                       pw.Text('3rd Floor, Sharif Complex, Habiganj', style: const pw.TextStyle(fontSize: 8)),
                       pw.Text('Phone: 01870237734', style: const pw.TextStyle(fontSize: 8)),
@@ -90,8 +94,9 @@ class PdfService {
                   _buildTableRow('Full Name', student.fullName),
                   _buildTableRow('Contact Number', student.mobileNumber),
                   _buildTableRow('Enrolled Course', student.course),
-                  _buildTableRow('Payment Scheme', student.paymentPlan),
-                  _buildTableRow('Scholarship Benefit', student.scholarship),
+                  _buildTableRow('Batch Name', student.batchName),
+                  _buildTableRow('Time', student.time),
+                  _buildTableRow('Due Amount', 'BDT ${student.dueAmount.toStringAsFixed(0)}'),
                 ],
               ),
               
@@ -101,21 +106,37 @@ class PdfService {
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.end,
                 children: [
-                  pw.Container(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    decoration: pw.BoxDecoration(
-                      color: primaryRed,
-                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
-                    ),
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.end,
-                      children: [
-                        pw.Text('TOTAL AMOUNT PAID', style: const pw.TextStyle(color: PdfColors.white, fontSize: 10)),
-                        pw.SizedBox(height: 4),
-                        pw.Text('BDT ${student.amountPaid.toStringAsFixed(2)}', 
-                          style: pw.TextStyle(color: PdfColors.white, fontSize: 22, fontWeight: pw.FontWeight.bold)),
-                      ],
-                    ),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        decoration: pw.BoxDecoration(
+                          color: primaryRed,
+                          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                        ),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.end,
+                          children: [
+                            pw.Text('AMOUNT PAID', style: const pw.TextStyle(color: PdfColors.white, fontSize: 10)),
+                            pw.SizedBox(height: 4),
+                            pw.Text('BDT ${student.paidAmount.toStringAsFixed(0)}', 
+                              style: pw.TextStyle(color: PdfColors.white, fontSize: 22, fontWeight: pw.FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                      pw.SizedBox(height: 40),
+                      pw.Container(
+                        width: 150,
+                        decoration: const pw.BoxDecoration(
+                          border: pw.Border(top: pw.BorderSide(color: PdfColors.black, width: 1)),
+                        ),
+                        padding: const pw.EdgeInsets.only(top: 8),
+                        child: pw.Center(
+                          child: pw.Text('Authorized Signature', style: const pw.TextStyle(fontSize: 10)),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -132,7 +153,7 @@ class PdfService {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text('IELTS VARSITY OFFICIAL', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: primaryRed)),
+                      pw.Text('IELTS UNIVERSITY OFFICIAL', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: primaryRed)),
                       pw.SizedBox(height: 4),
                       pw.Text('www.ieltsvarsity.com', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                     ],
@@ -151,24 +172,29 @@ class PdfService {
       ),
     );
 
+    // Save PDF bytes once to avoid re-rendering multiple times by the browser
+    final bytes = await pdf.save();
+    
     await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
+      onLayout: (PdfPageFormat format) async => bytes,
       name: 'Receipt_${student.fullName}_$receiptId',
     );
+
   }
 
   static pw.TableRow _buildTableRow(String label, String value) {
     return pw.TableRow(
       children: [
         pw.Padding(
-          padding: const pw.EdgeInsets.symmetric(vertical: 12),
+          padding: const pw.EdgeInsets.symmetric(vertical: 8),
           child: pw.Text(label, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.grey700, fontSize: 10)),
         ),
         pw.Padding(
-          padding: const pw.EdgeInsets.symmetric(vertical: 12),
+          padding: const pw.EdgeInsets.symmetric(vertical: 8),
           child: pw.Text(value, style: const pw.TextStyle(fontSize: 10)),
         ),
       ],
     );
   }
 }
+
