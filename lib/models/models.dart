@@ -284,10 +284,14 @@ class ReceiptModel {
 
 extension StudentBatchExtension on StudentModel {
   String get displayBatch {
-    if (coachingCenter == 'Ignite Academic' && course.contains(' - ')) {
-      return '${course.split(' - ')[0]} $batchName';
-    }
     return batchName;
+  }
+
+  String get displayCourse {
+    if (coachingCenter == 'Ignite Academic' && course.contains(' - ')) {
+      return course.substring(course.indexOf(' - ') + 3);
+    }
+    return course;
   }
 
   String get level {

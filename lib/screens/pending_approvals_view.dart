@@ -155,7 +155,10 @@ class PendingApprovalsView extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Approval'),
-        content: Text('Are you sure you want to approve registration for ${student.fullName}?'),
+        content: SizedBox(
+          width: 500,
+          child: Text('Are you sure you want to approve registration for ${student.fullName}?'),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
           TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('APPROVE', style: TextStyle(color: Colors.green))),

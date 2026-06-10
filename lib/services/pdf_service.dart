@@ -21,13 +21,39 @@ class PdfService {
     final receiptId = 'IV-${student.mobileNumber.substring(student.mobileNumber.length.clamp(4, 100) - 4)}-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
 
     pdf.addPage(
-      pw.Page(
+      pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(40),
-        build: (pw.Context context) {
+        footer: (pw.Context context) {
           return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
+              pw.Divider(color: PdfColors.grey100),
+              pw.SizedBox(height: 20),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: pw.CrossAxisAlignment.end,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('${student.coachingCenter.toUpperCase()} OFFICIAL', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: primaryColor)),
+                      pw.SizedBox(height: 4),
+                      pw.Text('www.ieltsvarsity.com', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                    ],
+                  ),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text('Turning Ambition into Achievement', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey)),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+        build: (pw.Context context) {
+          return [
               // Header section
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -176,33 +202,7 @@ class PdfService {
                 ],
               ),
 
-              pw.Spacer(),
-
-              // Footer
-              pw.Divider(color: PdfColors.grey100),
-              pw.SizedBox(height: 20),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: pw.CrossAxisAlignment.end,
-                children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text('${student.coachingCenter.toUpperCase()} OFFICIAL', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: primaryColor)),
-                      pw.SizedBox(height: 4),
-                      pw.Text('www.ieltsvarsity.com', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                    ],
-                  ),
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.end,
-                    children: [
-                      pw.Text('Turning Ambition into Achievement', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey)),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          );
+            ];
         },
       ),
     );

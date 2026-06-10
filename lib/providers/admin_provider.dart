@@ -147,7 +147,7 @@ final filteredStudentsProvider = Provider<AsyncValue<List<StudentModel>>>((ref) 
       filtered = filtered.where((s) => s.level == levelFilter).toList();
     }
     if (courseFilter != null && courseFilter.isNotEmpty) {
-      filtered = filtered.where((s) => s.course == courseFilter).toList();
+      filtered = filtered.where((s) => s.displayCourse == courseFilter).toList();
     }
     if (batchFilter != null && batchFilter.isNotEmpty) {
       filtered = filtered.where((s) => s.displayBatch == batchFilter).toList();

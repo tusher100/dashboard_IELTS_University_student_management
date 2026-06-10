@@ -31,6 +31,9 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
   final _relationController = TextEditingController();
   final _paidAmountController = TextEditingController();
   final _discountController = TextEditingController();
+  final _monthlyFeeController = TextEditingController();
+  final _admissionFeeController = TextEditingController();
+  final _durationController = TextEditingController();
 
   String? _selectedInitialMonth;
   final List<String> _months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -39,7 +42,7 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
   DateTime _selectedDob = DateTime.now().subtract(const Duration(days: 365 * 18));
   String _selectedGender = 'Male';
   String? _selectedLevel;
-  String? _selectedCourse;
+  List<String> _selectedCourses = [];
   String _selectedSource = 'Facebook';
   
   final Map<String, bool> _hscMonthlyCareSubjects = {
@@ -49,9 +52,6 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
     'Higher Math': false,
   };
 
-  double _totalAmount = 0;
-  double _admissionFee = 0;
-  String _courseDuration = '';
   double _dueAmount = 0;
 
   @override
@@ -76,9 +76,9 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
       if (s.course.contains(' - ')) {
         final parts = s.course.split(' - ');
         _selectedLevel = parts[0];
-        _selectedCourse = parts.sublist(1).join(' - ');
+        _selectedCourses = parts[1].split(', ').toList();
       } else {
-        _selectedCourse = s.course;
+        _selectedCourses = s.course.split(', ').toList();
       }
       
       // Parse time
@@ -97,7 +97,7 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
       // Parse subject
       if (['Science', 'Humanities', 'Business'].contains(s.subject)) {
         _selectedSubject = s.subject;
-      } else if (s.subject.isNotEmpty && _selectedLevel == 'HSC' && _selectedCourse == 'Monthly Care') {
+      } else if (s.subject.isNotEmpty && _selectedLevel == 'HSC' && _selectedCourses.contains('Monthly Care')) {
         final subjects = s.subject.split(', ');
         for (var sub in subjects) {
            if (_hscMonthlyCareSubjects.containsKey(sub)) {
@@ -108,9 +108,9 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
       
       _paidAmountController.text = s.paidAmount.toStringAsFixed(0);
       _discountController.text = s.discount.toStringAsFixed(0);
-      _totalAmount = s.totalAmount - s.paymentHistory.fold(0.0, (sum, p) => p.title.contains('Admission') ? sum + p.amount : sum); // Approximate handling
+      _monthlyFeeController.text = (s.totalAmount - s.paymentHistory.fold(0.0, (sum, p) => p.title.contains('Admission') ? sum + p.amount : sum)).toStringAsFixed(0);
       _dueAmount = s.dueAmount;
-      _courseDuration = s.courseDuration;
+      _durationController.text = s.courseDuration;
     }
   }
 
@@ -126,6 +126,9 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
     _relationController.dispose();
     _paidAmountController.dispose();
     _discountController.dispose();
+    _monthlyFeeController.dispose();
+    _admissionFeeController.dispose();
+    _durationController.dispose();
     super.dispose();
   }
 
@@ -138,44 +141,56 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
       return c.level == _selectedLevel;
     }).toList();
 
-    if (_selectedCourse != null) {
-      final courseData = courses.where((c) => c.title == _selectedCourse).firstOrNull;
-      if (courseData != null) {
-        if (_selectedLevel == 'HSC' && _selectedCourse == 'Monthly Care') {
-          int count = _hscMonthlyCareSubjects.values.where((v) => v).length;
-          _totalAmount = count == 4 ? 3500 : (count * 1000).toDouble();
-          _admissionFee = 1000;
-          _courseDuration = 'Monthly';
-        } else {
-          _totalAmount = courseData.price.toDouble();
-          _admissionFee = courseData.admissionFee.toDouble();
-          _courseDuration = courseData.duration;
+    double totalAmount = 0;
+    double admissionFee = 0;
+    String courseDuration = '';
+
+    if (_selectedCourses.isNotEmpty) {
+      for (var selectedCourse in _selectedCourses) {
+        final courseData = courses.where((c) => c.title == selectedCourse).firstOrNull;
+        if (courseData != null) {
+          if (_selectedLevel == 'HSC' && selectedCourse == 'Monthly Care') {
+            int count = _hscMonthlyCareSubjects.values.where((v) => v).length;
+            totalAmount += (count == 4 ? 3500 : count * 1000).toDouble();
+            admissionFee += courseData.admissionFee.toDouble();
+            courseDuration += '${courseDuration.isEmpty ? '' : ', '}${courseData.duration}';
+          } else {
+            totalAmount += courseData.price.toDouble();
+            admissionFee += courseData.admissionFee.toDouble();
+            courseDuration += '${courseDuration.isEmpty ? '' : ', '}${courseData.duration}';
+          }
         }
       }
-    } else {
-      _totalAmount = 0;
-      _admissionFee = 0;
-      _courseDuration = '';
     }
+    
+    _monthlyFeeController.text = totalAmount.toStringAsFixed(0);
+    _admissionFeeController.text = admissionFee.toStringAsFixed(0);
+    _durationController.text = courseDuration;
 
+    _updateDueAmount();
+  }
+
+  void _updateDueAmount() {
+    double totalAmount = double.tryParse(_monthlyFeeController.text) ?? 0;
+    double admissionFee = double.tryParse(_admissionFeeController.text) ?? 0;
     double paid = double.tryParse(_paidAmountController.text) ?? 0;
     double discount = double.tryParse(_discountController.text) ?? 0;
-    _dueAmount = (_totalAmount + _admissionFee) - paid - discount;
+    _dueAmount = (totalAmount + admissionFee) - paid - discount;
     if (_dueAmount < 0) _dueAmount = 0;
     setState(() {});
   }
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedCourse == null) {
+    if (_selectedCourses.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a course')),
+        const SnackBar(content: Text('Please select at least one course')),
       );
       return;
     }
 
     String finalSubject = _selectedSubject ?? '';
-    if ((ref.read(coachingCenterProvider) ?? 'IELTS University') == 'Ignite Academic' && _selectedCourse == 'Monthly Care' && _selectedLevel == 'HSC') {   finalSubject = _hscMonthlyCareSubjects.entries
+    if ((ref.read(coachingCenterProvider) ?? 'IELTS University') == 'Ignite Academic' && _selectedCourses.contains('Monthly Care') && _selectedLevel == 'HSC') {   finalSubject = _hscMonthlyCareSubjects.entries
           .where((e) => e.value)
           .map((e) => e.key)
           .join(', ');
@@ -188,15 +203,17 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
     }
 
     double initialPaid = double.tryParse(_paidAmountController.text) ?? 0;
+    double currentAdmissionFee = double.tryParse(_admissionFeeController.text) ?? 0;
+    double currentTotalAmount = double.tryParse(_monthlyFeeController.text) ?? 0;
     List<PaymentRecord> initialHistory = [];
     String initialMonthTitle = _selectedInitialMonth != null ? '$_selectedInitialMonth Month' : 'Initial Course Fee';
 
     if (initialPaid > 0) {
-      if (_admissionFee > 0 && initialPaid <= _admissionFee) {
+      if (currentAdmissionFee > 0 && initialPaid <= currentAdmissionFee) {
         initialHistory.add(PaymentRecord(title: 'Admission Fee', amount: initialPaid, date: DateTime.now()));
-      } else if (_admissionFee > 0 && initialPaid > _admissionFee) {
-        initialHistory.add(PaymentRecord(title: 'Admission Fee', amount: _admissionFee, date: DateTime.now()));
-        initialHistory.add(PaymentRecord(title: initialMonthTitle, amount: initialPaid - _admissionFee, date: DateTime.now()));
+      } else if (currentAdmissionFee > 0 && initialPaid > currentAdmissionFee) {
+        initialHistory.add(PaymentRecord(title: 'Admission Fee', amount: currentAdmissionFee, date: DateTime.now()));
+        initialHistory.add(PaymentRecord(title: initialMonthTitle, amount: initialPaid - currentAdmissionFee, date: DateTime.now()));
       } else {
         initialHistory.add(PaymentRecord(title: initialMonthTitle, amount: initialPaid, date: DateTime.now()));
       }
@@ -210,8 +227,8 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
       mobileNumber: _mobileController.text,
       email: _emailController.text,
       course: (ref.read(coachingCenterProvider) == 'Ignite Academic' && _selectedLevel != null) 
-          ? '$_selectedLevel - $_selectedCourse' 
-          : _selectedCourse!,
+          ? '$_selectedLevel - ${_selectedCourses.join(', ')}' 
+          : _selectedCourses.join(', '),
       batchName: _batchNameController.text,
       time: _selectedTime?.format(context) ?? '',
       educationalInstitution: _eduInstController.text,
@@ -220,11 +237,11 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
       source: _selectedSource,
       guardianName: _guardianController.text,
       relation: _relationController.text,
-      totalAmount: _totalAmount + _admissionFee,
+      totalAmount: currentTotalAmount + currentAdmissionFee,
       paidAmount: double.tryParse(_paidAmountController.text) ?? 0,
       dueAmount: _dueAmount,
       discount: double.tryParse(_discountController.text) ?? 0,
-      courseDuration: _courseDuration,
+      courseDuration: _durationController.text,
       isApproved: widget.studentToEdit?.isApproved ?? !widget.isPublic,
       coachingCenter: ref.read(coachingCenterProvider) ?? 'IELTS University',
       paymentHistory: widget.studentToEdit?.paymentHistory ?? initialHistory,
@@ -251,7 +268,10 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
           barrierDismissible: false,
           builder: (context) => AlertDialog(
             title: const Text('Registration Submitted'),
-            content: const Text('Your admission form has been received and is pending approval. Our authority will contact you soon.'),
+            content: const SizedBox(
+              width: 500,
+              child: Text('Your admission form has been received and is pending approval. Our authority will contact you soon.'),
+            ),
             actions: [
               TextButton(
                 onPressed: () {
@@ -301,13 +321,13 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
       _selectedInitialMonth = null;
       _selectedSubject = null;
       _selectedTime = null;
-      _selectedCourse = null;
+      _selectedCourses = [];
       _selectedLevel = null;
       _hscMonthlyCareSubjects.updateAll((key, value) => false);
-      _totalAmount = 0;
-      _admissionFee = 0;
+      _monthlyFeeController.text = '0';
+      _admissionFeeController.text = '0';
+      _durationController.text = '';
       _dueAmount = 0;
-      _courseDuration = '';
     });
   }
 
@@ -346,10 +366,10 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
                       runSpacing: 24,
                       children: [
                         _buildDateField('Registration Date', _selectedDate, (date) => setState(() => _selectedDate = date), fieldWidth),
-                        _buildTextField('Full Name', _nameController, Icons.person, width: fieldWidth),
+                        _buildTextField('Full Name', _nameController, Icons.person, width: fieldWidth, isRequired: true),
                         _buildDateField('Date of Birth', _selectedDob, (date) => setState(() => _selectedDob = date), fieldWidth),
                         _buildDropdownField('Gender', ['Male', 'Female', 'Other'], _selectedGender, (val) => setState(() => _selectedGender = val!), fieldWidth),
-                        _buildTextField('Mobile Number', _mobileController, Icons.phone, keyboardType: TextInputType.phone, width: fieldWidth),
+                        _buildTextField('Mobile Number', _mobileController, Icons.phone, keyboardType: TextInputType.phone, width: fieldWidth, isRequired: true),
                         _buildTextField('Email Address', _emailController, Icons.email, keyboardType: TextInputType.emailAddress, width: fieldWidth),
                       ],
                     ),
@@ -360,10 +380,10 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
                       runSpacing: 24,
                       children: [
                         if ((ref.watch(coachingCenterProvider) ?? 'IELTS University') == 'Ignite Academic')
-                          _buildDropdownField('Level', ['SSC', 'HSC'], _selectedLevel ?? 'HSC', (val) {
+                          _buildDropdownField('Level', ['SSC', 'HSC'], _selectedLevel, (val) {
                             setState(() {
                               _selectedLevel = val;
-                              _selectedCourse = null;
+                              _selectedCourses.clear();
                               _updateCalculations();
                             });
                           }, fieldWidth),
@@ -371,7 +391,7 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
                         _buildTextField('Batch Name', _batchNameController, Icons.groups, width: fieldWidth),
                         _buildTimePickerField('Preferred Time', _selectedTime, (time) => setState(() => _selectedTime = time), fieldWidth),
                         _buildTextField('Educational Institution', _eduInstController, Icons.school, width: fieldWidth),
-                        if (_selectedLevel == 'HSC' && _selectedCourse == 'Monthly Care')
+                        if (_selectedLevel == 'HSC' && _selectedCourses.contains('Monthly Care'))
                           SizedBox(
                             width: fieldWidth,
                             child: Column(
@@ -426,40 +446,36 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
                       child: Column(
                         children: [
                           if (isMobile) ...[
-                            _buildInfoDisplay('Monthly Fee', 'Tk ${_totalAmount.toStringAsFixed(0)}', Colors.blue),
-                            if (_admissionFee > 0) ...[
-                              const SizedBox(height: 16),
-                              _buildInfoDisplay('Admission Fee', 'Tk ${_admissionFee.toStringAsFixed(0)}', Colors.orange),
-                            ],
-                            const SizedBox(height: 16),
-                            _buildInfoDisplay('Duration', _courseDuration, Colors.purple),
+                             _buildTextField('Monthly Fee', _monthlyFeeController, Icons.attach_money, keyboardType: TextInputType.number, onChanged: (_) => _updateDueAmount(), width: fieldWidth),
+                             const SizedBox(height: 16),
+                             _buildTextField('Admission Fee', _admissionFeeController, Icons.money, keyboardType: TextInputType.number, onChanged: (_) => _updateDueAmount(), width: fieldWidth),
+                             const SizedBox(height: 16),
+                             _buildTextField('Duration', _durationController, Icons.timer, width: fieldWidth),
                           ] else 
                             Row(
                               children: [
-                                Expanded(child: _buildInfoDisplay('Monthly Fee', 'Tk ${_totalAmount.toStringAsFixed(0)}', Colors.blue)),
-                                if (_admissionFee > 0) ...[
-                                  const SizedBox(width: 24),
-                                  Expanded(child: _buildInfoDisplay('Admission Fee', 'Tk ${_admissionFee.toStringAsFixed(0)}', Colors.orange)),
-                                ],
+                                Expanded(child: _buildTextField('Monthly Fee', _monthlyFeeController, Icons.attach_money, keyboardType: TextInputType.number, onChanged: (_) => _updateDueAmount(), width: fieldWidth)),
                                 const SizedBox(width: 24),
-                                Expanded(child: _buildInfoDisplay('Duration', _courseDuration, Colors.purple)),
+                                Expanded(child: _buildTextField('Admission Fee', _admissionFeeController, Icons.money, keyboardType: TextInputType.number, onChanged: (_) => _updateDueAmount(), width: fieldWidth)),
+                                const SizedBox(width: 24),
+                                Expanded(child: _buildTextField('Duration', _durationController, Icons.timer, width: fieldWidth)),
                               ],
                             ),
                           const SizedBox(height: 24),
                           if (isMobile) ...[
-                             _buildTextField('Paid Amount', _paidAmountController, Icons.payments, onChanged: (_) => _updateCalculations(), width: fieldWidth),
+                             _buildTextField('Paid Amount', _paidAmountController, Icons.payments, onChanged: (_) => _updateDueAmount(), width: fieldWidth),
                              const SizedBox(height: 16),
                              _buildDropdownField('Payment Month', _months, _selectedInitialMonth, (val) => setState(() => _selectedInitialMonth = val), fieldWidth),
                              const SizedBox(height: 16),
-                             _buildTextField('Scholarship/Discount', _discountController, Icons.discount, onChanged: (_) => _updateCalculations(), width: fieldWidth),
+                             _buildTextField('Scholarship/Discount', _discountController, Icons.discount, onChanged: (_) => _updateDueAmount(), width: fieldWidth),
                           ] else
                             Row(
                               children: [
-                                Expanded(child: _buildTextField('Paid Amount', _paidAmountController, Icons.payments, onChanged: (_) => _updateCalculations(), width: fieldWidth)),
+                                Expanded(child: _buildTextField('Paid Amount', _paidAmountController, Icons.payments, onChanged: (_) => _updateDueAmount(), width: fieldWidth)),
                                 const SizedBox(width: 24),
                                 Expanded(child: _buildDropdownField('Payment Month', _months, _selectedInitialMonth, (val) => setState(() => _selectedInitialMonth = val), fieldWidth)),
                                 const SizedBox(width: 24),
-                                Expanded(child: _buildTextField('Scholarship/Discount', _discountController, Icons.discount, onChanged: (_) => _updateCalculations(), width: fieldWidth)),
+                                Expanded(child: _buildTextField('Scholarship/Discount', _discountController, Icons.discount, onChanged: (_) => _updateDueAmount(), width: fieldWidth)),
                               ],
                             ),
                           const SizedBox(height: 24),
@@ -505,7 +521,7 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, IconData icon, {TextInputType? keyboardType, Function(String)? onChanged, double? width}) {
+  Widget _buildTextField(String label, TextEditingController controller, IconData icon, {TextInputType? keyboardType, Function(String)? onChanged, double? width, bool isRequired = false}) {
     return SizedBox(
       width: width ?? 300,
       child: TextFormField(
@@ -519,7 +535,7 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
           fillColor: Colors.white,
         ),
         onChanged: onChanged,
-        validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+        validator: isRequired ? (val) => val == null || val.isEmpty ? 'Required' : null : null,
       ),
     );
   }
@@ -618,23 +634,77 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
     }).toList();
     
     final courseTitles = courses.map((c) => c.title).toList();
+    final primaryColor = center == 'IELTS University' ? const Color(0xFFD81B60) : const Color(0xFF38A169);
 
     return SizedBox(
       width: width ?? 300,
-      child: DropdownButtonFormField<String>(
-        value: courseTitles.contains(_selectedCourse) ? _selectedCourse : null,
-        isExpanded: true,
-        items: courseTitles.map((e) => DropdownMenuItem(value: e, child: Text(e, overflow: TextOverflow.ellipsis))).toList(),
-        onChanged: (val) {
-          _selectedCourse = val;
-          _updateCalculations();
+      child: InkWell(
+        onTap: () {
+          if (courseTitles.isEmpty) return;
+          showDialog(
+            context: context,
+            builder: (context) {
+              return StatefulBuilder(
+                builder: (context, setDialogState) {
+                  return AlertDialog(
+                    title: const Text('Select Courses'),
+                    content: SizedBox(
+                      width: 500,
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: courseTitles.map((title) {
+                          return CheckboxListTile(
+                            title: Text(title),
+                            value: _selectedCourses.contains(title),
+                            activeColor: primaryColor,
+                            onChanged: (val) {
+                              setDialogState(() {
+                                if (val == true) {
+                                  _selectedCourses.add(title);
+                                } else {
+                                  _selectedCourses.remove(title);
+                                }
+                              });
+                              setState(() {
+                                _updateCalculations();
+                              });
+                            },
+                          );
+                        }).toList(),
+                        ),
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Done'),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          );
         },
-        decoration: InputDecoration(
-          labelText: 'Select Course',
-          prefixIcon: const Icon(Icons.book, size: 20),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          filled: true,
-          fillColor: Colors.white,
+        child: InputDecorator(
+          decoration: InputDecoration(
+            labelText: 'Select Courses',
+            prefixIcon: const Icon(Icons.book, size: 20),
+            suffixIcon: const Icon(Icons.arrow_drop_down),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            filled: true,
+            fillColor: Colors.white,
+          ),
+          child: Text(
+            courseTitles.isEmpty
+                ? (center == 'Ignite Academic' && _selectedLevel == null ? 'Please select a level' : 'No courses available')
+                : _selectedCourses.isEmpty ? 'Select Courses' : _selectedCourses.join(', '),
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: courseTitles.isEmpty || _selectedCourses.isEmpty ? Colors.grey[600] : Colors.black87,
+            ),
+          ),
         ),
       ),
     );

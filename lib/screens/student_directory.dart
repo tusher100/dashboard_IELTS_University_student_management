@@ -22,7 +22,7 @@ class StudentDirectory extends ConsumerWidget {
     rawStudentsAsync.whenData((students) {
       batches.addAll(students.map((e) => e.displayBatch).where((b) => b.isNotEmpty).toSet().toList()..sort());
       levels.addAll(students.map((e) => e.level).where((l) => l != 'None').toSet().toList()..sort());
-      courses.addAll(students.map((e) => e.course).toSet().toList()..sort());
+      courses.addAll(students.map((e) => e.displayCourse).toSet().toList()..sort());
     });
 
     final currentBatch = ref.watch(batchFilterProvider);
@@ -324,7 +324,10 @@ class StudentDirectory extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Student?'),
-        content: Text('Are you sure you want to delete the record for ${student.fullName}? This action cannot be undone.'),
+        content: SizedBox(
+          width: 500,
+          child: Text('Are you sure you want to delete the record for ${student.fullName}? This action cannot be undone.'),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
           TextButton(
@@ -357,10 +360,12 @@ class StudentDirectory extends ConsumerWidget {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           title: Text('Collect Monthly Fee', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+          content: SizedBox(
+            width: 500,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               Text('Student: ${student.fullName}', style: const TextStyle(fontWeight: FontWeight.bold)),
               Text('Course: ${student.course}'),
               const SizedBox(height: 16),
@@ -377,6 +382,7 @@ class StudentDirectory extends ConsumerWidget {
                 decoration: const InputDecoration(labelText: 'Amount (Tk)', border: OutlineInputBorder()),
               ),
             ],
+          ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),

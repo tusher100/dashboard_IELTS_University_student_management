@@ -19,7 +19,7 @@ class AnalyticsView extends ConsumerWidget {
     rawStudentsAsync.whenData((students) {
       batches.addAll(students.map((e) => e.displayBatch).where((b) => b.isNotEmpty).toSet().toList()..sort());
       levels.addAll(students.map((e) => e.level).where((l) => l != 'None').toSet().toList()..sort());
-      courses.addAll(students.map((e) => e.course).toSet().toList()..sort());
+      courses.addAll(students.map((e) => e.displayCourse).toSet().toList()..sort());
     });
 
     final currentBatch = ref.watch(batchFilterProvider);
