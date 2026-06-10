@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../providers/admin_provider.dart';
-import '../models/models.dart';
 import 'package:intl/intl.dart';
+import '../models/models.dart';
+import '../providers/admin_provider.dart';
+import '../services/pdf_service.dart';
 
 class StudentDirectory extends ConsumerWidget {
   const StudentDirectory({super.key});
@@ -11,6 +12,12 @@ class StudentDirectory extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final studentsAsync = ref.watch(filteredStudentsProvider);
+    final rawStudentsAsync = ref.watch(studentsStreamProvider);
+    final List<String> batches = rawStudentsAsync.maybeWhen(
+      data: (students) => students.map((e) => e.batchName).where((b) => b.isNotEmpty).toSet().toList()..sort(),
+      orElse: () => [],
+    );
+    final currentBatch = ref.watch(batchFilterProvider);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -37,6 +44,22 @@ class StudentDirectory extends ConsumerWidget {
                   ),
                   onChanged: (val) => ref.read(searchQueryProvider.notifier).update(val),
                 ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: currentBatch,
+                  isExpanded: true,
+                  hint: const Text('All Batches'),
+                  items: [
+                    const DropdownMenuItem<String>(value: null, child: Text('All Batches', overflow: TextOverflow.ellipsis)),
+                    ...batches.map((b) => DropdownMenuItem(value: b, child: Text(b, overflow: TextOverflow.ellipsis))),
+                  ],
+                  onChanged: (val) => ref.read(batchFilterProvider.notifier).update(val),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
               ] else
                 Row(
                   children: [
@@ -45,6 +68,26 @@ class StudentDirectory extends ConsumerWidget {
                       style: GoogleFonts.montserrat(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF1A202C)),
                     ),
                     const Spacer(),
+                    SizedBox(
+                      width: 200,
+                      child: DropdownButtonFormField<String>(
+                        value: currentBatch,
+                        isExpanded: true,
+                        hint: const Text('All Batches'),
+                        items: [
+                          const DropdownMenuItem<String>(value: null, child: Text('All Batches', overflow: TextOverflow.ellipsis)),
+                          ...batches.map((b) => DropdownMenuItem(value: b, child: Text(b, overflow: TextOverflow.ellipsis))),
+                        ],
+                        onChanged: (val) => ref.read(batchFilterProvider.notifier).update(val),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
                     SizedBox(
                       width: 300,
                       child: TextField(
@@ -170,6 +213,20 @@ class StudentDirectory extends ConsumerWidget {
                 ], isMobile),
               ],
             ),
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton.icon(
+                onPressed: () => _showCollectFeeDialog(context, student, ref),
+                icon: const Icon(Icons.payment, size: 18),
+                label: const Text('Collect Fee'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFD81B60),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -222,6 +279,70 @@ class StudentDirectory extends ConsumerWidget {
               }
             },
             child: const Text('DELETE', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCollectFeeDialog(BuildContext context, StudentModel student, WidgetRef ref) {
+    final titleController = TextEditingController();
+    final amountController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Collect Monthly Fee', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Student: ${student.fullName}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text('Course: ${student.course}'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(labelText: 'Payment Title (e.g. August Month)', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: amountController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Amount (Tk)', border: OutlineInputBorder()),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final amount = double.tryParse(amountController.text) ?? 0;
+              if (titleController.text.isNotEmpty && amount > 0) {
+                final newRecord = PaymentRecord(
+                  title: titleController.text,
+                  amount: amount,
+                  date: DateTime.now(),
+                );
+                
+                final updatedStudent = student.copyWith(
+                  paidAmount: student.paidAmount + amount,
+                  dueAmount: student.dueAmount - amount,
+                  paymentHistory: [...student.paymentHistory, newRecord],
+                );
+
+                await ref.read(adminActionProvider.notifier).updateStudent(updatedStudent);
+                if (context.mounted) Navigator.pop(context);
+
+                ref.read(isPdfGeneratingProvider.notifier).update(true);
+                try {
+                  await PdfService.generateAndPrintReceipt(updatedStudent);
+                } finally {
+                  ref.read(isPdfGeneratingProvider.notifier).update(false);
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD81B60), foregroundColor: Colors.white),
+            child: const Text('Save & Print Receipt'),
           ),
         ],
       ),

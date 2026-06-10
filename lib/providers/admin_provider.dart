@@ -5,6 +5,14 @@ import '../services/database_service.dart';
 
 final adminProvider = Provider<DatabaseService>((ref) => DatabaseService());
 
+class CoachingCenterNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+  void update(String? value) => state = value;
+}
+
+final coachingCenterProvider = NotifierProvider<CoachingCenterNotifier, String?>(CoachingCenterNotifier.new);
+
 class PublicViewNotifier extends Notifier<bool> {
   @override
   bool build() {
@@ -47,17 +55,25 @@ class AdminNotifier extends Notifier<void> {
 }
 
 final studentsStreamProvider = StreamProvider<List<StudentModel>>((ref) {
+  final center = ref.watch(coachingCenterProvider);
+  if (center == null) return const Stream.empty();
+
   return FirebaseFirestore.instance
       .collection('students')
       .where('isApproved', isEqualTo: true)
+      .where('coachingCenter', isEqualTo: center)
       .snapshots()
       .map((snapshot) => snapshot.docs.map((doc) => StudentModel.fromFirestore(doc)).toList());
 });
 
 final pendingStudentsStreamProvider = StreamProvider<List<StudentModel>>((ref) {
+  final center = ref.watch(coachingCenterProvider);
+  if (center == null) return const Stream.empty();
+
   return FirebaseFirestore.instance
       .collection('students')
       .where('isApproved', isEqualTo: false)
+      .where('coachingCenter', isEqualTo: center)
       .snapshots()
       .map((snapshot) => snapshot.docs.map((doc) => StudentModel.fromFirestore(doc)).toList());
 });
@@ -70,13 +86,26 @@ class SearchQueryNotifier extends Notifier<String> {
 
 final searchQueryProvider = NotifierProvider<SearchQueryNotifier, String>(SearchQueryNotifier.new);
 
+class BatchFilterNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+  void update(String? value) => state = value;
+}
+
+final batchFilterProvider = NotifierProvider<BatchFilterNotifier, String?>(BatchFilterNotifier.new);
+
 final filteredStudentsProvider = Provider<AsyncValue<List<StudentModel>>>((ref) {
   final studentsAsync = ref.watch(studentsStreamProvider);
   final searchQuery = ref.watch(searchQueryProvider).toLowerCase();
+  final batchFilter = ref.watch(batchFilterProvider);
 
   return studentsAsync.whenData((students) {
-    if (searchQuery.isEmpty) return students;
-    return students.where((student) {
+    var filtered = students;
+    if (batchFilter != null && batchFilter.isNotEmpty) {
+      filtered = filtered.where((s) => s.batchName == batchFilter).toList();
+    }
+    if (searchQuery.isEmpty) return filtered;
+    return filtered.where((student) {
       return student.fullName.toLowerCase().contains(searchQuery) ||
              student.mobileNumber.contains(searchQuery);
     }).toList();

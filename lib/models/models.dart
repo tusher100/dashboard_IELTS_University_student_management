@@ -4,14 +4,16 @@ class CourseData {
   final String title;
   final int price;
   final String duration;
+  final int admissionFee;
 
   const CourseData({
     required this.title,
     required this.price,
     required this.duration,
+    this.admissionFee = 0,
   });
 
-  static const Map<String, CourseData> courses = {
+  static const Map<String, CourseData> ieltsCourses = {
     'Pre-IELTS Care': CourseData(title: 'Pre-IELTS Care', price: 12900, duration: '3.5 month'),
     'Spoken+Computer Basic': CourseData(title: 'Spoken+Computer Basic', price: 3900, duration: ''),
     'Spoken': CourseData(title: 'Spoken', price: 2000, duration: ''),
@@ -27,6 +29,45 @@ class CourseData {
     'Kids Spoken': CourseData(title: 'Kids Spoken', price: 1000, duration: 'admission fee'),
     'Kids Spoken Monthly': CourseData(title: 'Kids Spoken Monthly', price: 1500, duration: 'monthly fee'),
   };
+
+  static const Map<String, CourseData> ignitHscCourses = {
+    'Exam Batch': CourseData(title: 'Exam Batch', price: 2000, duration: 'Monthly', admissionFee: 1000),
+    'Monthly Care': CourseData(title: 'Monthly Care', price: 1500, duration: 'Monthly', admissionFee: 1000),
+    'Combo Course (ICT+ English)': CourseData(title: 'Combo Course (ICT+ English)', price: 3000, duration: 'Monthly', admissionFee: 1500),
+  };
+
+  static const Map<String, CourseData> ignitSscCourses = {
+    'Exam Batch': CourseData(title: 'Exam Batch', price: 1500, duration: 'Monthly', admissionFee: 1000),
+    'Monthly Care': CourseData(title: 'Monthly Care', price: 1000, duration: 'Monthly', admissionFee: 1000),
+  };
+}
+
+class PaymentRecord {
+  final String title;
+  final double amount;
+  final DateTime date;
+
+  PaymentRecord({
+    required this.title,
+    required this.amount,
+    required this.date,
+  });
+
+  factory PaymentRecord.fromMap(Map<String, dynamic> map) {
+    return PaymentRecord(
+      title: map['title'] ?? '',
+      amount: (map['amount'] ?? 0.0).toDouble(),
+      date: (map['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'amount': amount,
+      'date': Timestamp.fromDate(date),
+    };
+  }
 }
 
 class StudentModel {
@@ -53,6 +94,8 @@ class StudentModel {
   final String courseDuration;
   final DateTime? createdAt;
   final bool isApproved;
+  final String coachingCenter;
+  final List<PaymentRecord> paymentHistory;
 
   StudentModel({
     this.id,
@@ -78,6 +121,8 @@ class StudentModel {
     required this.courseDuration,
     this.createdAt,
     this.isApproved = true,
+    required this.coachingCenter,
+    this.paymentHistory = const [],
   });
 
   factory StudentModel.fromFirestore(DocumentSnapshot doc) {
@@ -106,6 +151,67 @@ class StudentModel {
       courseDuration: data['courseDuration'] ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       isApproved: data['isApproved'] ?? true,
+      coachingCenter: data['coachingCenter'] ?? 'IELTS University',
+      paymentHistory: (data['paymentHistory'] as List<dynamic>?)
+              ?.map((e) => PaymentRecord.fromMap(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
+
+  StudentModel copyWith({
+    String? id,
+    DateTime? date,
+    String? fullName,
+    DateTime? dob,
+    String? gender,
+    String? mobileNumber,
+    String? email,
+    String? course,
+    String? batchName,
+    String? time,
+    String? educationalInstitution,
+    String? subject,
+    String? ra,
+    String? source,
+    String? guardianName,
+    String? relation,
+    double? totalAmount,
+    double? paidAmount,
+    double? dueAmount,
+    double? discount,
+    String? courseDuration,
+    DateTime? createdAt,
+    bool? isApproved,
+    String? coachingCenter,
+    List<PaymentRecord>? paymentHistory,
+  }) {
+    return StudentModel(
+      id: id ?? this.id,
+      date: date ?? this.date,
+      fullName: fullName ?? this.fullName,
+      dob: dob ?? this.dob,
+      gender: gender ?? this.gender,
+      mobileNumber: mobileNumber ?? this.mobileNumber,
+      email: email ?? this.email,
+      course: course ?? this.course,
+      batchName: batchName ?? this.batchName,
+      time: time ?? this.time,
+      educationalInstitution: educationalInstitution ?? this.educationalInstitution,
+      subject: subject ?? this.subject,
+      ra: ra ?? this.ra,
+      source: source ?? this.source,
+      guardianName: guardianName ?? this.guardianName,
+      relation: relation ?? this.relation,
+      totalAmount: totalAmount ?? this.totalAmount,
+      paidAmount: paidAmount ?? this.paidAmount,
+      dueAmount: dueAmount ?? this.dueAmount,
+      discount: discount ?? this.discount,
+      courseDuration: courseDuration ?? this.courseDuration,
+      createdAt: createdAt ?? this.createdAt,
+      isApproved: isApproved ?? this.isApproved,
+      coachingCenter: coachingCenter ?? this.coachingCenter,
+      paymentHistory: paymentHistory ?? this.paymentHistory,
     );
   }
 
@@ -132,6 +238,8 @@ class StudentModel {
       'discount': discount,
       'courseDuration': courseDuration,
       'isApproved': isApproved,
+      'coachingCenter': coachingCenter,
+      'paymentHistory': paymentHistory.map((e) => e.toMap()).toList(),
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
     };
   }

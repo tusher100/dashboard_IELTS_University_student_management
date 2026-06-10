@@ -34,10 +34,19 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
   DateTime _selectedDate = DateTime.now();
   DateTime _selectedDob = DateTime.now().subtract(const Duration(days: 365 * 18));
   String _selectedGender = 'Male';
+  String? _selectedLevel;
   String? _selectedCourse;
   String _selectedSource = 'Facebook';
   
+  final Map<String, bool> _hscMonthlyCareSubjects = {
+    'Physics': false,
+    'Chemistry': false,
+    'Biology': false,
+    'Higher Math': false,
+  };
+
   double _totalAmount = 0;
+  double _admissionFee = 0;
   String _courseDuration = '';
   double _dueAmount = 0;
 
@@ -59,17 +68,43 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
   }
 
   void _updateCalculations() {
-    if (_selectedCourse != null) {
-      final courseData = CourseData.courses[_selectedCourse];
-      if (courseData != null) {
-        _totalAmount = courseData.price.toDouble();
-        _courseDuration = courseData.duration;
+    final center = ref.read(coachingCenterProvider) ?? 'IELTS University';
+    Map<String, CourseData> courses;
+    if (center == 'IELTS University') {
+      courses = CourseData.ieltsCourses;
+    } else {
+      if (_selectedLevel == 'HSC') {
+        courses = CourseData.ignitHscCourses;
+      } else if (_selectedLevel == 'SSC') {
+        courses = CourseData.ignitSscCourses;
+      } else {
+        courses = {};
       }
+    }
+
+    if (_selectedCourse != null) {
+      final courseData = courses[_selectedCourse];
+      if (courseData != null) {
+        if (_selectedLevel == 'HSC' && _selectedCourse == 'Monthly Care') {
+          int count = _hscMonthlyCareSubjects.values.where((v) => v).length;
+          _totalAmount = count == 4 ? 3500 : (count * 1000).toDouble();
+          _admissionFee = 1000;
+          _courseDuration = 'Monthly';
+        } else {
+          _totalAmount = courseData.price.toDouble();
+          _admissionFee = courseData.admissionFee.toDouble();
+          _courseDuration = courseData.duration;
+        }
+      }
+    } else {
+      _totalAmount = 0;
+      _admissionFee = 0;
+      _courseDuration = '';
     }
 
     double paid = double.tryParse(_paidAmountController.text) ?? 0;
     double discount = double.tryParse(_discountController.text) ?? 0;
-    _dueAmount = _totalAmount - paid - discount;
+    _dueAmount = (_totalAmount + _admissionFee) - paid - discount;
     setState(() {});
   }
 
@@ -80,6 +115,34 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
         const SnackBar(content: Text('Please select a course')),
       );
       return;
+    }
+
+    String finalSubject = _subjectController.text;
+    if (_selectedLevel == 'HSC' && _selectedCourse == 'Monthly Care') {
+      finalSubject = _hscMonthlyCareSubjects.entries
+          .where((e) => e.value)
+          .map((e) => e.key)
+          .join(', ');
+      if (finalSubject.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select at least one subject for Monthly Care')),
+        );
+        return;
+      }
+    }
+
+    double initialPaid = double.tryParse(_paidAmountController.text) ?? 0;
+    List<PaymentRecord> initialHistory = [];
+
+    if (initialPaid > 0) {
+      if (_admissionFee > 0 && initialPaid <= _admissionFee) {
+        initialHistory.add(PaymentRecord(title: 'Admission Fee', amount: initialPaid, date: DateTime.now()));
+      } else if (_admissionFee > 0 && initialPaid > _admissionFee) {
+        initialHistory.add(PaymentRecord(title: 'Admission Fee', amount: _admissionFee, date: DateTime.now()));
+        initialHistory.add(PaymentRecord(title: 'Initial Course Fee', amount: initialPaid - _admissionFee, date: DateTime.now()));
+      } else {
+        initialHistory.add(PaymentRecord(title: 'Initial Course Fee', amount: initialPaid, date: DateTime.now()));
+      }
     }
 
     final student = StudentModel(
@@ -93,17 +156,19 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
       batchName: _batchNameController.text,
       time: _timeController.text,
       educationalInstitution: _eduInstController.text,
-      subject: _subjectController.text,
+      subject: finalSubject,
       ra: _raController.text,
       source: _selectedSource,
       guardianName: _guardianController.text,
       relation: _relationController.text,
-      totalAmount: _totalAmount,
+      totalAmount: _totalAmount + _admissionFee,
       paidAmount: double.tryParse(_paidAmountController.text) ?? 0,
       dueAmount: _dueAmount,
       discount: double.tryParse(_discountController.text) ?? 0,
       courseDuration: _courseDuration,
       isApproved: !widget.isPublic,
+      coachingCenter: ref.read(coachingCenterProvider) ?? 'IELTS University',
+      paymentHistory: initialHistory,
     );
 
     try {
@@ -167,7 +232,10 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
     _discountController.clear();
     setState(() {
       _selectedCourse = null;
+      _selectedLevel = null;
+      _hscMonthlyCareSubjects.updateAll((key, value) => false);
       _totalAmount = 0;
+      _admissionFee = 0;
       _dueAmount = 0;
       _courseDuration = '';
     });
@@ -218,11 +286,47 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
                       spacing: 24,
                       runSpacing: 24,
                       children: [
+                        if ((ref.watch(coachingCenterProvider) ?? 'IELTS University') == 'Ignit Coaching')
+                          _buildDropdownField('Level', ['SSC', 'HSC'], _selectedLevel ?? 'HSC', (val) {
+                            setState(() {
+                              _selectedLevel = val;
+                              _selectedCourse = null;
+                              _updateCalculations();
+                            });
+                          }, fieldWidth),
                         _buildCourseDropdown(fieldWidth),
                         _buildTextField('Batch Name', _batchNameController, Icons.groups, width: fieldWidth),
                         _buildTextField('Preferred Time', _timeController, Icons.access_time, width: fieldWidth),
                         _buildTextField('Educational Institution', _eduInstController, Icons.school, width: fieldWidth),
-                        _buildTextField('Subject', _subjectController, Icons.book, width: fieldWidth),
+                        if (_selectedLevel == 'HSC' && _selectedCourse == 'Monthly Care')
+                          SizedBox(
+                            width: fieldWidth,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Select Subjects (Tk 1000/each, 4 for Tk 3500)', 
+                                     style: GoogleFonts.montserrat(fontSize: 12, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 8),
+                                ..._hscMonthlyCareSubjects.keys.map((subject) {
+                                  return CheckboxListTile(
+                                    title: Text(subject, style: GoogleFonts.montserrat(fontSize: 14)),
+                                    value: _hscMonthlyCareSubjects[subject],
+                                    onChanged: (bool? value) {
+                                      setState(() {
+                                        _hscMonthlyCareSubjects[subject] = value ?? false;
+                                        _updateCalculations();
+                                      });
+                                    },
+                                    controlAffinity: ListTileControlAffinity.leading,
+                                    contentPadding: EdgeInsets.zero,
+                                    dense: true,
+                                  );
+                                }),
+                              ],
+                            ),
+                          )
+                        else
+                          _buildTextField('Subject', _subjectController, Icons.book, width: fieldWidth),
                         _buildTextField('R/A', _raController, Icons.info_outline, width: fieldWidth),
                       ],
                     ),
@@ -249,13 +353,21 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
                       child: Column(
                         children: [
                           if (isMobile) ...[
-                            _buildInfoDisplay('Course Fee', 'Tk ${_totalAmount.toStringAsFixed(0)}', Colors.blue),
+                            _buildInfoDisplay('Monthly Fee', 'Tk ${_totalAmount.toStringAsFixed(0)}', Colors.blue),
+                            if (_admissionFee > 0) ...[
+                              const SizedBox(height: 16),
+                              _buildInfoDisplay('Admission Fee', 'Tk ${_admissionFee.toStringAsFixed(0)}', Colors.orange),
+                            ],
                             const SizedBox(height: 16),
                             _buildInfoDisplay('Duration', _courseDuration, Colors.purple),
                           ] else 
                             Row(
                               children: [
-                                Expanded(child: _buildInfoDisplay('Course Fee', 'Tk ${_totalAmount.toStringAsFixed(0)}', Colors.blue)),
+                                Expanded(child: _buildInfoDisplay('Monthly Fee', 'Tk ${_totalAmount.toStringAsFixed(0)}', Colors.blue)),
+                                if (_admissionFee > 0) ...[
+                                  const SizedBox(width: 24),
+                                  Expanded(child: _buildInfoDisplay('Admission Fee', 'Tk ${_admissionFee.toStringAsFixed(0)}', Colors.orange)),
+                                ],
                                 const SizedBox(width: 24),
                                 Expanded(child: _buildInfoDisplay('Duration', _courseDuration, Colors.purple)),
                               ],
@@ -264,13 +376,13 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
                           if (isMobile) ...[
                              _buildTextField('Paid Amount', _paidAmountController, Icons.payments, onChanged: (_) => _updateCalculations(), width: fieldWidth),
                              const SizedBox(height: 16),
-                             _buildTextField('Discount (if any)', _discountController, Icons.discount, onChanged: (_) => _updateCalculations(), width: fieldWidth),
+                             _buildTextField('Scholarship/Discount', _discountController, Icons.discount, onChanged: (_) => _updateCalculations(), width: fieldWidth),
                           ] else
                             Row(
                               children: [
                                 Expanded(child: _buildTextField('Paid Amount', _paidAmountController, Icons.payments, onChanged: (_) => _updateCalculations(), width: fieldWidth)),
                                 const SizedBox(width: 24),
-                                Expanded(child: _buildTextField('Discount (if any)', _discountController, Icons.discount, onChanged: (_) => _updateCalculations(), width: fieldWidth)),
+                                Expanded(child: _buildTextField('Scholarship/Discount', _discountController, Icons.discount, onChanged: (_) => _updateCalculations(), width: fieldWidth)),
                               ],
                             ),
                           const SizedBox(height: 24),
@@ -362,12 +474,13 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
     );
   }
 
-  Widget _buildDropdownField(String label, List<String> items, String value, Function(String?) onChanged, [double? width]) {
+  Widget _buildDropdownField(String label, List<String> items, String? value, Function(String?) onChanged, [double? width]) {
     return SizedBox(
       width: width ?? 300,
       child: DropdownButtonFormField<String>(
         value: value,
-        items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+        isExpanded: true,
+        items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, overflow: TextOverflow.ellipsis))).toList(),
         onChanged: onChanged,
         decoration: InputDecoration(
           labelText: label,
@@ -380,11 +493,26 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
   }
 
   Widget _buildCourseDropdown([double? width]) {
+    final center = ref.watch(coachingCenterProvider) ?? 'IELTS University';
+    Map<String, CourseData> courses;
+    if (center == 'IELTS University') {
+      courses = CourseData.ieltsCourses;
+    } else {
+      if (_selectedLevel == 'HSC') {
+        courses = CourseData.ignitHscCourses;
+      } else if (_selectedLevel == 'SSC') {
+        courses = CourseData.ignitSscCourses;
+      } else {
+        courses = {};
+      }
+    }
+
     return SizedBox(
       width: width ?? 300,
       child: DropdownButtonFormField<String>(
-        value: _selectedCourse,
-        items: CourseData.courses.keys.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+        value: courses.containsKey(_selectedCourse) ? _selectedCourse : null,
+        isExpanded: true,
+        items: courses.keys.map((e) => DropdownMenuItem(value: e, child: Text(e, overflow: TextOverflow.ellipsis))).toList(),
         onChanged: (val) {
           _selectedCourse = val;
           _updateCalculations();

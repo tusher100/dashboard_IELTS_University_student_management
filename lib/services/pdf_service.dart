@@ -3,13 +3,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../models/models.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter/services.dart';
 
 class PdfService {
-  static pw.MemoryImage? _cachedLogo;
-  static pw.Font? _cachedFont;
-  static pw.Font? _cachedBoldFont;
-
   static Future<void> generateAndPrintReceipt(StudentModel student) async {
     final pdf = pw.Document();
     
@@ -17,36 +12,17 @@ class PdfService {
     const primaryRed = PdfColor.fromInt(0xFFE4284C);
     const slateNavy = PdfColor.fromInt(0xFF1A202C);
     
-    // Attempt to load logo (Robust method for Web with Caching)
-    if (_cachedLogo == null) {
-      try {
-        final ByteData bytes = await rootBundle.load('assets/images/logo.png');
-        _cachedLogo = pw.MemoryImage(bytes.buffer.asUint8List());
-      } catch (e) {
-        print('PDF Logo Error: $e');
-      }
-    }
-    final logoImage = _cachedLogo;
+    // Disable logo loading to prevent 20-30s freeze. 
+    // Dart's PDF package uses zlib to compress images, which takes 20+ seconds for large PNGs on Web.
+    final pw.MemoryImage? logoImage = null;
 
     final dateStr = DateFormat('dd-MMMM-yyyy').format(student.date);
     final receiptId = 'IV-${student.mobileNumber.substring(student.mobileNumber.length.clamp(4, 100) - 4)}-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
-
-    // Load Google Fonts for Unicode support (Robust method with Caching)
-    if (_cachedFont == null || _cachedBoldFont == null) {
-      _cachedFont = await PdfGoogleFonts.robotoRegular();
-      _cachedBoldFont = await PdfGoogleFonts.robotoBold();
-    }
-    final font = _cachedFont!;
-    final boldFont = _cachedBoldFont!;
 
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(40),
-        theme: pw.ThemeData.withFont(
-          base: font,
-          bold: boldFont,
-        ),
         build: (pw.Context context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -100,7 +76,65 @@ class PdfService {
                 ],
               ),
               
-              pw.SizedBox(height: 60),
+              pw.SizedBox(height: 40),
+
+              // Payment History
+              if (student.paymentHistory.isNotEmpty) ...[
+                pw.Text('PAYMENT HISTORY', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: slateNavy)),
+                pw.SizedBox(height: 16),
+                pw.Container(
+                  padding: const pw.EdgeInsets.all(16),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: PdfColors.grey300),
+                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      for (int i = 0; i < student.paymentHistory.length - 1; i++) ...[
+                        pw.Row(
+                          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                          children: [
+                            pw.Text(student.paymentHistory[i].title, style: const pw.TextStyle(fontSize: 10)),
+                            pw.Text('BDT ${student.paymentHistory[i].amount.toStringAsFixed(0)}', style: const pw.TextStyle(fontSize: 10)),
+                          ],
+                        ),
+                        pw.SizedBox(height: 8),
+                      ],
+                      if (student.paymentHistory.length > 1) ...[
+                        pw.Divider(color: PdfColors.grey400, thickness: 1),
+                        pw.SizedBox(height: 8),
+                      ],
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text(student.paymentHistory.last.title, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('BDT ${student.paymentHistory.last.amount.toStringAsFixed(0)}', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 40),
+              ] else if (student.paidAmount > 0) ...[
+                 pw.Text('PAYMENT HISTORY', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: slateNavy)),
+                 pw.SizedBox(height: 16),
+                 pw.Container(
+                   padding: const pw.EdgeInsets.all(16),
+                   decoration: pw.BoxDecoration(
+                     border: pw.Border.all(color: PdfColors.grey300),
+                     borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                   ),
+                   child: pw.Row(
+                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                     children: [
+                       pw.Text('Initial Payment', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                       pw.Text('BDT ${student.paidAmount.toStringAsFixed(0)}', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                     ],
+                   ),
+                 ),
+                 pw.SizedBox(height: 40),
+              ],
 
               // Payment Summary Box
               pw.Row(
@@ -118,7 +152,7 @@ class PdfService {
                         child: pw.Column(
                           crossAxisAlignment: pw.CrossAxisAlignment.end,
                           children: [
-                            pw.Text('AMOUNT PAID', style: const pw.TextStyle(color: PdfColors.white, fontSize: 10)),
+                            pw.Text('TOTAL AMOUNT PAID', style: const pw.TextStyle(color: PdfColors.white, fontSize: 10)),
                             pw.SizedBox(height: 4),
                             pw.Text('BDT ${student.paidAmount.toStringAsFixed(0)}', 
                               style: pw.TextStyle(color: PdfColors.white, fontSize: 22, fontWeight: pw.FontWeight.bold)),
@@ -161,7 +195,7 @@ class PdfService {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
-                      pw.Text('Turning Ambition into Achievement', style: pw.TextStyle(fontSize: 9, fontStyle: pw.FontStyle.italic, color: PdfColors.grey)),
+                      pw.Text('Turning Ambition into Achievement', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey)),
                     ],
                   ),
                 ],
@@ -179,7 +213,6 @@ class PdfService {
       onLayout: (PdfPageFormat format) async => bytes,
       name: 'Receipt_${student.fullName}_$receiptId',
     );
-
   }
 
   static pw.TableRow _buildTableRow(String label, String value) {

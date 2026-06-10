@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/auth_provider.dart';
+import '../providers/admin_provider.dart';
 import 'public_registration_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -31,7 +32,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const primaryRed = Color(0xFFD81B60);
+    final coachingCenter = ref.watch(coachingCenterProvider) ?? 'IELTS University';
+    final isIelts = coachingCenter == 'IELTS University';
+    
+    final primaryColor = isIelts ? const Color(0xFFD81B60) : const Color(0xFF4C51BF);
+    final centerIcon = isIelts ? Icons.school : Icons.science;
     const slateNavy = Color(0xFF1A202C);
 
     return Scaffold(
@@ -59,10 +64,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: primaryRed.withOpacity(0.1),
+                    color: primaryColor.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.school, color: primaryRed, size: 48),
+                  child: Icon(centerIcon, color: primaryColor, size: 48),
                 ),
               ),
               const SizedBox(height: 24),
@@ -79,7 +84,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const SizedBox(height: 8),
               Center(
                 child: Text(
-                  'Access the IELTS University Authority Panel',
+                  'Access the $coachingCenter Authority Panel',
                   style: GoogleFonts.montserrat(
                     fontSize: 14,
                     color: Colors.black45,
@@ -124,7 +129,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ElevatedButton(
                 onPressed: _handleLogin,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryRed,
+                  backgroundColor: primaryColor,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 24),
                   shape: RoundedRectangleBorder(
@@ -150,7 +155,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 },
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 24),
-                  side: BorderSide(color: primaryRed.withOpacity(0.5)),
+                  side: BorderSide(color: primaryColor.withOpacity(0.5)),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -158,7 +163,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Text(
                   'STUDENT ADMISSION FORM',
                   style: GoogleFonts.montserrat(
-                    color: primaryRed,
+                    color: primaryColor,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1,
                   ),
@@ -174,6 +179,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     color: Colors.black12,
                     letterSpacing: 1,
                   ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Center(
+                child: TextButton.icon(
+                  onPressed: () {
+                    ref.read(coachingCenterProvider.notifier).update(null);
+                  },
+                  icon: const Icon(Icons.arrow_back, size: 16),
+                  label: const Text('Change Coaching Center'),
                 ),
               ),
             ],

@@ -9,7 +9,13 @@ class AnalyticsView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final studentsAsync = ref.watch(studentsStreamProvider);
+    final studentsAsync = ref.watch(filteredStudentsProvider);
+    final rawStudentsAsync = ref.watch(studentsStreamProvider);
+    final List<String> batches = rawStudentsAsync.maybeWhen(
+      data: (students) => students.map((e) => e.batchName).where((b) => b.isNotEmpty).toSet().toList()..sort(),
+      orElse: () => [],
+    );
+    final currentBatch = ref.watch(batchFilterProvider);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -20,14 +26,64 @@ class AnalyticsView extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Business Analytics',
-                style: GoogleFonts.montserrat(
-                  fontSize: isMobile ? 20 : 24, 
-                  fontWeight: FontWeight.bold, 
-                  color: const Color(0xFF1A202C)
+              if (isMobile) ...[
+                Text(
+                  'Business Analytics',
+                  style: GoogleFonts.montserrat(
+                    fontSize: 20, 
+                    fontWeight: FontWeight.bold, 
+                    color: const Color(0xFF1A202C)
+                  ),
                 ),
-              ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: currentBatch,
+                  isExpanded: true,
+                  hint: const Text('All Batches'),
+                  items: [
+                    const DropdownMenuItem<String>(value: null, child: Text('All Batches', overflow: TextOverflow.ellipsis)),
+                    ...batches.map((b) => DropdownMenuItem(value: b, child: Text(b, overflow: TextOverflow.ellipsis))),
+                  ],
+                  onChanged: (val) => ref.read(batchFilterProvider.notifier).update(val),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+              ] else
+                Row(
+                  children: [
+                    Text(
+                      'Business Analytics',
+                      style: GoogleFonts.montserrat(
+                        fontSize: 24, 
+                        fontWeight: FontWeight.bold, 
+                        color: const Color(0xFF1A202C)
+                      ),
+                    ),
+                    const Spacer(),
+                    SizedBox(
+                      width: 200,
+                      child: DropdownButtonFormField<String>(
+                        value: currentBatch,
+                        isExpanded: true,
+                        hint: const Text('All Batches'),
+                        items: [
+                          const DropdownMenuItem<String>(value: null, child: Text('All Batches', overflow: TextOverflow.ellipsis)),
+                          ...batches.map((b) => DropdownMenuItem(value: b, child: Text(b, overflow: TextOverflow.ellipsis))),
+                        ],
+                        onChanged: (val) => ref.read(batchFilterProvider.notifier).update(val),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               const SizedBox(height: 32),
               studentsAsync.when(
                 data: (students) => Expanded(child: _buildDashboard(students, isMobile)),
@@ -62,9 +118,9 @@ class AnalyticsView extends ConsumerWidget {
         ] else
           Row(
             children: [
-              _buildMetricCard('Total Students', totalStudents.toString(), Icons.people, Colors.blue),
+              Expanded(child: _buildMetricCard('Total Students', totalStudents.toString(), Icons.people, Colors.blue)),
               const SizedBox(width: 24),
-              _buildMetricCard('Total Revenue', 'Tk ${totalRevenue.toStringAsFixed(0)}', Icons.payments, Colors.green),
+              Expanded(child: _buildMetricCard('Total Revenue', 'Tk ${totalRevenue.toStringAsFixed(0)}', Icons.payments, Colors.green)),
             ],
           ),
         const SizedBox(height: 32),
@@ -104,28 +160,26 @@ class AnalyticsView extends ConsumerWidget {
   }
 
   Widget _buildMetricCard(String label, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(backgroundColor: color.withOpacity(0.1), child: Icon(icon, color: color)),
-            const SizedBox(width: 20),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-                const SizedBox(height: 4),
-                Text(value, style: GoogleFonts.montserrat(fontSize: 22, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(backgroundColor: color.withOpacity(0.1), child: Icon(icon, color: color)),
+          const SizedBox(width: 20),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+              const SizedBox(height: 4),
+              Text(value, style: GoogleFonts.montserrat(fontSize: 22, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ],
       ),
     );
   }
