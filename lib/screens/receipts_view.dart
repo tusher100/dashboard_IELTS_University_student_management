@@ -29,7 +29,7 @@ class ReceiptsView extends ConsumerWidget {
                 const SizedBox(height: 16),
                 TextField(
                   decoration: InputDecoration(
-                    hintText: 'Search...',
+                    hintText: 'Search by name or mobile...',
                     prefixIcon: const Icon(Icons.search),
                     filled: true,
                     fillColor: Colors.white,
@@ -49,7 +49,7 @@ class ReceiptsView extends ConsumerWidget {
                       width: 300,
                       child: TextField(
                         decoration: InputDecoration(
-                          hintText: 'Search student...',
+                          hintText: 'Search by name or mobile...',
                           prefixIcon: const Icon(Icons.search),
                           filled: true,
                           fillColor: Colors.white,
@@ -88,7 +88,7 @@ class ReceiptsView extends ConsumerWidget {
             child: const Icon(Icons.receipt, color: Colors.blue)
           ),
           title: Text(student.fullName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isMobile ? 14 : 16)),
-          subtitle: Text('${student.course}\nBatch: ${student.batchName}', style: const TextStyle(fontSize: 12)),
+          subtitle: Text('${student.mobileNumber}\n${student.course}\nBatch: ${student.batchName}', style: const TextStyle(fontSize: 12)),
           trailing: isMobile 
             ? IconButton(
                 onPressed: () => PdfService.generateAndPrintReceipt(student),

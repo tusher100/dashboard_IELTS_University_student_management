@@ -8,7 +8,8 @@ import '../services/pdf_service.dart';
 
 class RegistrationForm extends ConsumerStatefulWidget {
   final bool isPublic;
-  const RegistrationForm({super.key, this.isPublic = false});
+  final StudentModel? studentToEdit;
+  const RegistrationForm({super.key, this.isPublic = false, this.studentToEdit});
 
   @override
   ConsumerState<RegistrationForm> createState() => _RegistrationFormState();
@@ -22,14 +23,17 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
   final _mobileController = TextEditingController();
   final _emailController = TextEditingController();
   final _batchNameController = TextEditingController();
-  final _timeController = TextEditingController();
+  TimeOfDay? _selectedTime;
   final _eduInstController = TextEditingController();
-  final _subjectController = TextEditingController();
+  String? _selectedSubject;
   final _raController = TextEditingController();
   final _guardianController = TextEditingController();
   final _relationController = TextEditingController();
   final _paidAmountController = TextEditingController();
   final _discountController = TextEditingController();
+
+  String? _selectedInitialMonth;
+  final List<String> _months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
   DateTime _selectedDate = DateTime.now();
   DateTime _selectedDob = DateTime.now().subtract(const Duration(days: 365 * 18));
@@ -51,14 +55,72 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
   double _dueAmount = 0;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.studentToEdit != null) {
+      final s = widget.studentToEdit!;
+      _nameController.text = s.fullName;
+      _mobileController.text = s.mobileNumber;
+      _emailController.text = s.email;
+      _batchNameController.text = s.batchName;
+      _eduInstController.text = s.educationalInstitution;
+      _raController.text = s.ra;
+      _guardianController.text = s.guardianName;
+      _relationController.text = s.relation;
+      _selectedDate = s.date;
+      _selectedDob = s.dob;
+      _selectedGender = s.gender;
+      _selectedSource = s.source;
+      
+      // Parse course
+      if (s.course.contains(' - ')) {
+        final parts = s.course.split(' - ');
+        _selectedLevel = parts[0];
+        _selectedCourse = parts.sublist(1).join(' - ');
+      } else {
+        _selectedCourse = s.course;
+      }
+      
+      // Parse time
+      if (s.time.isNotEmpty) {
+        try {
+           final timeParts = s.time.split(' ');
+           final hm = timeParts[0].split(':');
+           int hour = int.parse(hm[0]);
+           int minute = int.parse(hm[1]);
+           if (timeParts.length > 1 && timeParts[1].toUpperCase() == 'PM' && hour != 12) hour += 12;
+           if (timeParts.length > 1 && timeParts[1].toUpperCase() == 'AM' && hour == 12) hour = 0;
+           _selectedTime = TimeOfDay(hour: hour, minute: minute);
+        } catch (e) {}
+      }
+
+      // Parse subject
+      if (['Science', 'Humanities', 'Business'].contains(s.subject)) {
+        _selectedSubject = s.subject;
+      } else if (s.subject.isNotEmpty && _selectedLevel == 'HSC' && _selectedCourse == 'Monthly Care') {
+        final subjects = s.subject.split(', ');
+        for (var sub in subjects) {
+           if (_hscMonthlyCareSubjects.containsKey(sub)) {
+             _hscMonthlyCareSubjects[sub] = true;
+           }
+        }
+      }
+      
+      _paidAmountController.text = s.paidAmount.toStringAsFixed(0);
+      _discountController.text = s.discount.toStringAsFixed(0);
+      _totalAmount = s.totalAmount - s.paymentHistory.fold(0.0, (sum, p) => p.title.contains('Admission') ? sum + p.amount : sum); // Approximate handling
+      _dueAmount = s.dueAmount;
+      _courseDuration = s.courseDuration;
+    }
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _mobileController.dispose();
     _emailController.dispose();
     _batchNameController.dispose();
-    _timeController.dispose();
     _eduInstController.dispose();
-    _subjectController.dispose();
     _raController.dispose();
     _guardianController.dispose();
     _relationController.dispose();
@@ -74,9 +136,9 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
       courses = CourseData.ieltsCourses;
     } else {
       if (_selectedLevel == 'HSC') {
-        courses = CourseData.ignitHscCourses;
+        courses = CourseData.igniteHscCourses;
       } else if (_selectedLevel == 'SSC') {
-        courses = CourseData.ignitSscCourses;
+        courses = CourseData.igniteSscCourses;
       } else {
         courses = {};
       }
@@ -105,6 +167,7 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
     double paid = double.tryParse(_paidAmountController.text) ?? 0;
     double discount = double.tryParse(_discountController.text) ?? 0;
     _dueAmount = (_totalAmount + _admissionFee) - paid - discount;
+    if (_dueAmount < 0) _dueAmount = 0;
     setState(() {});
   }
 
@@ -117,9 +180,8 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
       return;
     }
 
-    String finalSubject = _subjectController.text;
-    if (_selectedLevel == 'HSC' && _selectedCourse == 'Monthly Care') {
-      finalSubject = _hscMonthlyCareSubjects.entries
+    String finalSubject = _selectedSubject ?? '';
+    if ((ref.read(coachingCenterProvider) ?? 'IELTS University') == 'Ignite Academic' && _selectedCourse == 'Monthly Care' && _selectedLevel == 'HSC') {   finalSubject = _hscMonthlyCareSubjects.entries
           .where((e) => e.value)
           .map((e) => e.key)
           .join(', ');
@@ -133,15 +195,16 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
 
     double initialPaid = double.tryParse(_paidAmountController.text) ?? 0;
     List<PaymentRecord> initialHistory = [];
+    String initialMonthTitle = _selectedInitialMonth != null ? '$_selectedInitialMonth Month' : 'Initial Course Fee';
 
     if (initialPaid > 0) {
       if (_admissionFee > 0 && initialPaid <= _admissionFee) {
         initialHistory.add(PaymentRecord(title: 'Admission Fee', amount: initialPaid, date: DateTime.now()));
       } else if (_admissionFee > 0 && initialPaid > _admissionFee) {
         initialHistory.add(PaymentRecord(title: 'Admission Fee', amount: _admissionFee, date: DateTime.now()));
-        initialHistory.add(PaymentRecord(title: 'Initial Course Fee', amount: initialPaid - _admissionFee, date: DateTime.now()));
+        initialHistory.add(PaymentRecord(title: initialMonthTitle, amount: initialPaid - _admissionFee, date: DateTime.now()));
       } else {
-        initialHistory.add(PaymentRecord(title: 'Initial Course Fee', amount: initialPaid, date: DateTime.now()));
+        initialHistory.add(PaymentRecord(title: initialMonthTitle, amount: initialPaid, date: DateTime.now()));
       }
     }
 
@@ -152,9 +215,11 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
       gender: _selectedGender,
       mobileNumber: _mobileController.text,
       email: _emailController.text,
-      course: _selectedCourse!,
+      course: (ref.read(coachingCenterProvider) == 'Ignite Academic' && _selectedLevel != null) 
+          ? '$_selectedLevel - $_selectedCourse' 
+          : _selectedCourse!,
       batchName: _batchNameController.text,
-      time: _timeController.text,
+      time: _selectedTime?.format(context) ?? '',
       educationalInstitution: _eduInstController.text,
       subject: finalSubject,
       ra: _raController.text,
@@ -166,12 +231,22 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
       dueAmount: _dueAmount,
       discount: double.tryParse(_discountController.text) ?? 0,
       courseDuration: _courseDuration,
-      isApproved: !widget.isPublic,
+      isApproved: widget.studentToEdit?.isApproved ?? !widget.isPublic,
       coachingCenter: ref.read(coachingCenterProvider) ?? 'IELTS University',
-      paymentHistory: initialHistory,
+      paymentHistory: widget.studentToEdit?.paymentHistory ?? initialHistory,
+      id: widget.studentToEdit?.id,
     );
 
     try {
+      if (widget.studentToEdit != null) {
+        await ref.read(adminActionProvider.notifier).updateStudent(student);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Student updated successfully!')));
+          Navigator.pop(context);
+        }
+        return;
+      }
+
       await ref.read(adminActionProvider.notifier).addStudent(student);
       
       if (!context.mounted) return;
@@ -222,15 +297,16 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
     _mobileController.clear();
     _emailController.clear();
     _batchNameController.clear();
-    _timeController.clear();
     _eduInstController.clear();
-    _subjectController.clear();
     _raController.clear();
     _guardianController.clear();
     _relationController.clear();
     _paidAmountController.clear();
     _discountController.clear();
     setState(() {
+      _selectedInitialMonth = null;
+      _selectedSubject = null;
+      _selectedTime = null;
       _selectedCourse = null;
       _selectedLevel = null;
       _hscMonthlyCareSubjects.updateAll((key, value) => false);
@@ -247,6 +323,9 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < 800;
         final fieldWidth = isMobile ? constraints.maxWidth : 300.0;
+        
+        final coachingCenter = ref.watch(coachingCenterProvider) ?? 'IELTS University';
+        final primaryColor = coachingCenter == 'IELTS University' ? const Color(0xFFD81B60) : const Color(0xFF38A169);
 
         return SingleChildScrollView(
           padding: EdgeInsets.all(isMobile ? 16 : 32),
@@ -267,7 +346,7 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
                       ),
                     ),
                     const SizedBox(height: 32),
-                    _buildSectionTitle('Personal Information'),
+                    _buildSectionTitle('Personal Information', primaryColor),
                     Wrap(
                       spacing: 24,
                       runSpacing: 24,
@@ -281,12 +360,12 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
                       ],
                     ),
                     const SizedBox(height: 48),
-                    _buildSectionTitle('Course & Batch Details'),
+                    _buildSectionTitle('Course & Batch Details', primaryColor),
                     Wrap(
                       spacing: 24,
                       runSpacing: 24,
                       children: [
-                        if ((ref.watch(coachingCenterProvider) ?? 'IELTS University') == 'Ignit Coaching')
+                        if ((ref.watch(coachingCenterProvider) ?? 'IELTS University') == 'Ignite Academic')
                           _buildDropdownField('Level', ['SSC', 'HSC'], _selectedLevel ?? 'HSC', (val) {
                             setState(() {
                               _selectedLevel = val;
@@ -296,7 +375,7 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
                           }, fieldWidth),
                         _buildCourseDropdown(fieldWidth),
                         _buildTextField('Batch Name', _batchNameController, Icons.groups, width: fieldWidth),
-                        _buildTextField('Preferred Time', _timeController, Icons.access_time, width: fieldWidth),
+                        _buildTimePickerField('Preferred Time', _selectedTime, (time) => setState(() => _selectedTime = time), fieldWidth),
                         _buildTextField('Educational Institution', _eduInstController, Icons.school, width: fieldWidth),
                         if (_selectedLevel == 'HSC' && _selectedCourse == 'Monthly Care')
                           SizedBox(
@@ -326,12 +405,12 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
                             ),
                           )
                         else
-                          _buildTextField('Subject', _subjectController, Icons.book, width: fieldWidth),
+                          _buildDropdownField('Subject', ['Science', 'Humanities', 'Business'], _selectedSubject, (val) => setState(() => _selectedSubject = val), fieldWidth),
                         _buildTextField('R/A', _raController, Icons.info_outline, width: fieldWidth),
                       ],
                     ),
                     const SizedBox(height: 48),
-                    _buildSectionTitle('Guardian & Reference'),
+                    _buildSectionTitle('Guardian & Reference', primaryColor),
                     Wrap(
                       spacing: 24,
                       runSpacing: 24,
@@ -342,7 +421,7 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
                       ],
                     ),
                     const SizedBox(height: 48),
-                    _buildSectionTitle('Payment Details'),
+                    _buildSectionTitle('Payment Details', primaryColor),
                     Container(
                       padding: EdgeInsets.all(isMobile ? 16 : 24),
                       decoration: BoxDecoration(
@@ -376,11 +455,15 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
                           if (isMobile) ...[
                              _buildTextField('Paid Amount', _paidAmountController, Icons.payments, onChanged: (_) => _updateCalculations(), width: fieldWidth),
                              const SizedBox(height: 16),
+                             _buildDropdownField('Payment Month', _months, _selectedInitialMonth, (val) => setState(() => _selectedInitialMonth = val), fieldWidth),
+                             const SizedBox(height: 16),
                              _buildTextField('Scholarship/Discount', _discountController, Icons.discount, onChanged: (_) => _updateCalculations(), width: fieldWidth),
                           ] else
                             Row(
                               children: [
                                 Expanded(child: _buildTextField('Paid Amount', _paidAmountController, Icons.payments, onChanged: (_) => _updateCalculations(), width: fieldWidth)),
+                                const SizedBox(width: 24),
+                                Expanded(child: _buildDropdownField('Payment Month', _months, _selectedInitialMonth, (val) => setState(() => _selectedInitialMonth = val), fieldWidth)),
                                 const SizedBox(width: 24),
                                 Expanded(child: _buildTextField('Scholarship/Discount', _discountController, Icons.discount, onChanged: (_) => _updateCalculations(), width: fieldWidth)),
                               ],
@@ -399,7 +482,7 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
                         child: Text(
-                          widget.isPublic ? 'SUBMIT ADMISSION FORM' : 'REGISTER & GENERATE RECEIPT', 
+                          widget.studentToEdit != null ? 'UPDATE STUDENT' : (widget.isPublic ? 'SUBMIT ADMISSION FORM' : 'REGISTER & GENERATE RECEIPT'), 
                           style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 16)
                         ),
                       ),
@@ -415,14 +498,14 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(String title, Color primaryColor) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title, style: GoogleFonts.montserrat(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-          Container(height: 4, width: 40, decoration: BoxDecoration(color: const Color(0xFFD81B60), borderRadius: BorderRadius.circular(2))),
+          Container(height: 4, width: 40, decoration: BoxDecoration(color: primaryColor, borderRadius: BorderRadius.circular(2))),
         ],
       ),
     );
@@ -473,6 +556,45 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
       ),
     );
   }
+  Widget _buildTimePickerField(String label, TimeOfDay? value, Function(TimeOfDay) onSelected, [double? width]) {
+    return SizedBox(
+      width: width ?? 300,
+      child: InkWell(
+        onTap: () async {
+          final TimeOfDay? picked = await showTimePicker(
+            context: context,
+            initialTime: value ?? TimeOfDay.now(),
+            builder: (context, child) {
+              return MediaQuery(
+                data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+                child: child!,
+              );
+            },
+          );
+          if (picked != null) {
+            // Force 15m intervals
+            int minute = (picked.minute / 15).round() * 15;
+            int hour = picked.hour;
+            if (minute == 60) {
+              minute = 0;
+              hour = (hour + 1) % 24;
+            }
+            onSelected(TimeOfDay(hour: hour, minute: minute));
+          }
+        },
+        child: InputDecorator(
+          decoration: InputDecoration(
+            labelText: label,
+            prefixIcon: const Icon(Icons.access_time, size: 20),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            filled: true,
+            fillColor: Colors.white,
+          ),
+          child: Text(value?.format(context) ?? 'Select Time'),
+        ),
+      ),
+    );
+  }
 
   Widget _buildDropdownField(String label, List<String> items, String? value, Function(String?) onChanged, [double? width]) {
     return SizedBox(
@@ -498,13 +620,7 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
     if (center == 'IELTS University') {
       courses = CourseData.ieltsCourses;
     } else {
-      if (_selectedLevel == 'HSC') {
-        courses = CourseData.ignitHscCourses;
-      } else if (_selectedLevel == 'SSC') {
-        courses = CourseData.ignitSscCourses;
-      } else {
-        courses = {};
-      }
+      courses = _selectedLevel == 'SSC' ? CourseData.igniteSscCourses : CourseData.igniteHscCourses;
     }
 
     return SizedBox(

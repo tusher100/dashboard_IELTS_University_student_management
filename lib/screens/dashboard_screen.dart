@@ -1,3 +1,4 @@
+import 'package:admin_web/providers/admin_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -58,7 +59,10 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildSidebar(BuildContext context, WidgetRef ref, {bool asDrawer = false}) {
     const slateNavy = Color(0xFF1A202C);
-    const primaryRed = Color(0xFFE4284C);
+    final coachingCenter = ref.watch(coachingCenterProvider) ?? 'IELTS University';
+    final isIelts = coachingCenter == 'IELTS University';
+    final primaryColor = isIelts ? const Color(0xFFE4284C) : const Color(0xFF38A169);
+    final centerIcon = isIelts ? Icons.school : Icons.science;
     final currentSection = ref.watch(navProvider);
 
     return Container(
@@ -74,15 +78,15 @@ class DashboardScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: primaryRed,
+                    color: primaryColor,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.school, color: Colors.white, size: 24),
+                  child: Icon(centerIcon, color: Colors.white, size: 24),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
-                    'IELTS UNIVERSITY',
+                    coachingCenter.toUpperCase(),
                     style: GoogleFonts.montserrat(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -96,13 +100,13 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 48),
-          _buildSidebarItem(context, ref, Icons.app_registration_rounded, 'Registration', DashboardSection.registration, currentSection == DashboardSection.registration, asDrawer),
-          _buildSidebarItem(context, ref, Icons.pending_actions_rounded, 'Approvals', DashboardSection.pending, currentSection == DashboardSection.pending, asDrawer),
-          _buildSidebarItem(context, ref, Icons.receipt_long_rounded, 'Receipts', DashboardSection.receipts, currentSection == DashboardSection.receipts, asDrawer),
-          _buildSidebarItem(context, ref, Icons.people_alt_rounded, 'Directory', DashboardSection.students, currentSection == DashboardSection.students, asDrawer),
-          _buildSidebarItem(context, ref, Icons.bar_chart_rounded, 'Results', DashboardSection.results, currentSection == DashboardSection.results, asDrawer),
-          _buildSidebarItem(context, ref, Icons.insights_rounded, 'Analytics', DashboardSection.analytics, currentSection == DashboardSection.analytics, asDrawer),
-          _buildSidebarItem(context, ref, Icons.settings_suggest_rounded, 'Settings', DashboardSection.settings, currentSection == DashboardSection.settings, asDrawer),
+          _buildSidebarItem(context, ref, Icons.app_registration_rounded, 'Registration', DashboardSection.registration, currentSection == DashboardSection.registration, asDrawer, primaryColor),
+          _buildSidebarItem(context, ref, Icons.pending_actions_rounded, 'Approvals', DashboardSection.pending, currentSection == DashboardSection.pending, asDrawer, primaryColor),
+          _buildSidebarItem(context, ref, Icons.receipt_long_rounded, 'Receipts', DashboardSection.receipts, currentSection == DashboardSection.receipts, asDrawer, primaryColor),
+          _buildSidebarItem(context, ref, Icons.people_alt_rounded, 'Directory', DashboardSection.students, currentSection == DashboardSection.students, asDrawer, primaryColor),
+          _buildSidebarItem(context, ref, Icons.bar_chart_rounded, 'Results', DashboardSection.results, currentSection == DashboardSection.results, asDrawer, primaryColor),
+          _buildSidebarItem(context, ref, Icons.insights_rounded, 'Analytics', DashboardSection.analytics, currentSection == DashboardSection.analytics, asDrawer, primaryColor),
+          _buildSidebarItem(context, ref, Icons.settings_suggest_rounded, 'Settings', DashboardSection.settings, currentSection == DashboardSection.settings, asDrawer, primaryColor),
           const Spacer(),
           Padding(
             padding: const EdgeInsets.all(24.0),
@@ -114,9 +118,9 @@ class DashboardScreen extends ConsumerWidget {
               ),
               child: Row(
                 children: [
-                  const CircleAvatar(
-                    backgroundColor: primaryRed, 
-                    child: Text('A', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
+                  CircleAvatar(
+                    backgroundColor: primaryColor, 
+                    child: const Text('A', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -139,17 +143,16 @@ class DashboardScreen extends ConsumerWidget {
   }
 
 
-  Widget _buildSidebarItem(BuildContext context, WidgetRef ref, IconData icon, String label, DashboardSection section, bool isActive, bool asDrawer) {
-    const primaryRed = Color(0xFFE4284C);
+  Widget _buildSidebarItem(BuildContext context, WidgetRef ref, IconData icon, String label, DashboardSection section, bool isActive, bool asDrawer, Color primaryColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4),
       child: Container(
         decoration: BoxDecoration(
-          color: isActive ? primaryRed.withOpacity(0.1) : Colors.transparent,
+          color: isActive ? primaryColor.withOpacity(0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: ListTile(
-          leading: Icon(icon, color: isActive ? primaryRed : Colors.white54),
+          leading: Icon(icon, color: isActive ? primaryColor : Colors.white54),
           title: Text(
             label,
             style: GoogleFonts.montserrat(

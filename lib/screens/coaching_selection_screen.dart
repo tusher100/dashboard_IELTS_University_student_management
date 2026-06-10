@@ -51,10 +51,10 @@ class CoachingSelectionScreen extends ConsumerWidget {
                   _buildSelectionCard(
                     context,
                     ref,
-                    title: 'Ignit Coaching',
+                    title: 'Ignite Academic',
                     icon: Icons.science,
-                    color: const Color(0xFF4C51BF),
-                    centerName: 'Ignit Coaching',
+                    color: const Color(0xFF38A169), // Green theme
+                    centerName: 'Ignite Academic',
                   ),
                 ],
               ),

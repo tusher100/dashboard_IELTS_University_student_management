@@ -30,13 +30,13 @@ class CourseData {
     'Kids Spoken Monthly': CourseData(title: 'Kids Spoken Monthly', price: 1500, duration: 'monthly fee'),
   };
 
-  static const Map<String, CourseData> ignitHscCourses = {
+  static const Map<String, CourseData> igniteHscCourses = {
     'Exam Batch': CourseData(title: 'Exam Batch', price: 2000, duration: 'Monthly', admissionFee: 1000),
     'Monthly Care': CourseData(title: 'Monthly Care', price: 1500, duration: 'Monthly', admissionFee: 1000),
-    'Combo Course (ICT+ English)': CourseData(title: 'Combo Course (ICT+ English)', price: 3000, duration: 'Monthly', admissionFee: 1500),
+    'Combo Course (ICT + English)': CourseData(title: 'Combo Course (ICT + English)', price: 3000, duration: 'Monthly', admissionFee: 1000),
   };
 
-  static const Map<String, CourseData> ignitSscCourses = {
+  static const Map<String, CourseData> igniteSscCourses = {
     'Exam Batch': CourseData(title: 'Exam Batch', price: 1500, duration: 'Monthly', admissionFee: 1000),
     'Monthly Care': CourseData(title: 'Monthly Care', price: 1000, duration: 'Monthly', admissionFee: 1000),
   };

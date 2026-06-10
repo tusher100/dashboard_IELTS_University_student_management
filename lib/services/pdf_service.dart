@@ -8,8 +8,9 @@ class PdfService {
   static Future<void> generateAndPrintReceipt(StudentModel student) async {
     final pdf = pw.Document();
     
-    // Branding Colors
-    const primaryRed = PdfColor.fromInt(0xFFE4284C);
+    // Branding Colors based on coaching center
+    final isIgnite = student.coachingCenter == 'Ignite Academic';
+    final primaryColor = isIgnite ? const PdfColor.fromInt(0xFF38A169) : const PdfColor.fromInt(0xFFE4284C);
     const slateNavy = PdfColor.fromInt(0xFF1A202C);
     
     // Disable logo loading to prevent 20-30s freeze. 
@@ -40,7 +41,7 @@ class PdfService {
                           child: pw.Image(logoImage),
                         )
                       else
-                        pw.Text('IELTS UNIVERSITY', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: primaryRed)),
+                        pw.Text(student.coachingCenter.toUpperCase(), style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: primaryColor)),
                       pw.SizedBox(height: 8),
                       pw.Text('3rd Floor, Sharif Complex, Habiganj', style: const pw.TextStyle(fontSize: 8)),
                       pw.Text('Phone: 01870237734', style: const pw.TextStyle(fontSize: 8)),
@@ -50,7 +51,7 @@ class PdfService {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
-                      pw.Text('OFFICIAL RECEIPT', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: primaryRed)),
+                      pw.Text('OFFICIAL RECEIPT', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: primaryColor)),
                       pw.Text('Receipt No: $receiptId', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
                       pw.Text('Date: $dateStr', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
                     ],
@@ -58,7 +59,7 @@ class PdfService {
                 ],
               ),
               pw.SizedBox(height: 20),
-              pw.Divider(color: primaryRed, thickness: 1.5),
+              pw.Divider(color: primaryColor, thickness: 1.5),
               pw.SizedBox(height: 40),
 
               // Student Details Grid
@@ -72,7 +73,7 @@ class PdfService {
                   _buildTableRow('Enrolled Course', student.course),
                   _buildTableRow('Batch Name', student.batchName),
                   _buildTableRow('Time', student.time),
-                  _buildTableRow('Due Amount', 'BDT ${student.dueAmount.toStringAsFixed(0)}'),
+                  _buildTableRow('Due Amount', 'BDT ${(student.dueAmount < 0 ? 0 : student.dueAmount).toStringAsFixed(0)}'),
                 ],
               ),
               
@@ -146,7 +147,7 @@ class PdfService {
                       pw.Container(
                         padding: const pw.EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                         decoration: pw.BoxDecoration(
-                          color: primaryRed,
+                          color: primaryColor,
                           borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
                         ),
                         child: pw.Column(
@@ -187,7 +188,7 @@ class PdfService {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text('IELTS UNIVERSITY OFFICIAL', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: primaryRed)),
+                      pw.Text('${student.coachingCenter.toUpperCase()} OFFICIAL', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: primaryColor)),
                       pw.SizedBox(height: 4),
                       pw.Text('www.ieltsvarsity.com', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                     ],

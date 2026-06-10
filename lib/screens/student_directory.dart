@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../providers/admin_provider.dart';
 import '../services/pdf_service.dart';
+import 'registration_form.dart';
 
 class StudentDirectory extends ConsumerWidget {
   const StudentDirectory({super.key});
@@ -142,6 +143,9 @@ class StudentDirectory extends ConsumerWidget {
   }
 
   Widget _buildStudentCard(BuildContext context, StudentModel student, WidgetRef ref, bool isMobile) {
+    final coachingCenter = ref.watch(coachingCenterProvider) ?? 'IELTS University';
+    final primaryColor = coachingCenter == 'IELTS University' ? const Color(0xFFD81B60) : const Color(0xFF38A169);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 24),
       elevation: 2,
@@ -208,23 +212,59 @@ class StudentDirectory extends ConsumerWidget {
                   _infoItem('Total Amount', 'Tk ${student.totalAmount.toStringAsFixed(0)}'),
                   _infoItem('Paid Amount', 'Tk ${student.paidAmount.toStringAsFixed(0)}'),
                   _infoItem('Discount', 'Tk ${student.discount.toStringAsFixed(0)}'),
-                  _infoItem('Due Balance', 'Tk ${student.dueAmount.toStringAsFixed(0)}', 
-                    valueColor: student.dueAmount > 0 ? Colors.red : Colors.green),
+                  _infoItem('Due Balance', 'Tk ${(student.dueAmount < 0 ? 0 : student.dueAmount).toStringAsFixed(0)}', 
+                    valueColor: student.dueAmount > 0 ? primaryColor : Colors.green),
                 ], isMobile),
               ],
             ),
             const SizedBox(height: 16),
             Align(
               alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
-                onPressed: () => _showCollectFeeDialog(context, student, ref),
-                icon: const Icon(Icons.payment, size: 18),
-                label: const Text('Collect Fee'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD81B60),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => Dialog(
+                          insetPadding: EdgeInsets.all(isMobile ? 16 : 48),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Scaffold(
+                              appBar: AppBar(
+                                title: const Text('Edit Student'),
+                                leading: IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                              ),
+                              body: RegistrationForm(studentToEdit: student),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.edit, size: 18),
+                    label: const Text('Edit'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: primaryColor,
+                      side: BorderSide(color: primaryColor),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  ElevatedButton.icon(
+                    onPressed: () => _showCollectFeeDialog(context, student, ref),
+                    icon: const Icon(Icons.payment, size: 18),
+                    label: const Text('Collect Fee'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -286,49 +326,59 @@ class StudentDirectory extends ConsumerWidget {
   }
 
   void _showCollectFeeDialog(BuildContext context, StudentModel student, WidgetRef ref) {
-    final titleController = TextEditingController();
+    final coachingCenter = ref.read(coachingCenterProvider) ?? 'IELTS University';
+    final primaryColor = coachingCenter == 'IELTS University' ? const Color(0xFFD81B60) : const Color(0xFF38A169);
+
+    String? selectedMonth;
+    final List<String> months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     final amountController = TextEditingController();
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Collect Monthly Fee', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Student: ${student.fullName}', style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text('Course: ${student.course}'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(labelText: 'Payment Title (e.g. August Month)', border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: amountController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Amount (Tk)', border: OutlineInputBorder()),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              final amount = double.tryParse(amountController.text) ?? 0;
-              if (titleController.text.isNotEmpty && amount > 0) {
-                final newRecord = PaymentRecord(
-                  title: titleController.text,
-                  amount: amount,
-                  date: DateTime.now(),
-                );
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text('Collect Monthly Fee', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Student: ${student.fullName}', style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text('Course: ${student.course}'),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: selectedMonth,
+                decoration: const InputDecoration(labelText: 'Payment Month', border: OutlineInputBorder()),
+                items: months.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                onChanged: (val) => setState(() => selectedMonth = val),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: amountController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Amount (Tk)', border: OutlineInputBorder()),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                final amount = double.tryParse(amountController.text) ?? 0;
+                if (selectedMonth != null && amount > 0) {
+                  final newRecord = PaymentRecord(
+                    title: '$selectedMonth Month',
+                    amount: amount,
+                    date: DateTime.now(),
+                  );
                 
-                final updatedStudent = student.copyWith(
-                  paidAmount: student.paidAmount + amount,
-                  dueAmount: student.dueAmount - amount,
-                  paymentHistory: [...student.paymentHistory, newRecord],
-                );
+                  double newDue = student.dueAmount - amount;
+                  if (newDue < 0) newDue = 0;
+
+                  final updatedStudent = student.copyWith(
+                    paidAmount: student.paidAmount + amount,
+                    dueAmount: newDue,
+                    paymentHistory: [...student.paymentHistory, newRecord],
+                  );
 
                 await ref.read(adminActionProvider.notifier).updateStudent(updatedStudent);
                 if (context.mounted) Navigator.pop(context);
@@ -341,11 +391,11 @@ class StudentDirectory extends ConsumerWidget {
                 }
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD81B60), foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white),
             child: const Text('Save & Print Receipt'),
           ),
         ],
       ),
-    );
+    ));
   }
 }

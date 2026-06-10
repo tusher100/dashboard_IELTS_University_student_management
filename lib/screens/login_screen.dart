@@ -35,7 +35,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final coachingCenter = ref.watch(coachingCenterProvider) ?? 'IELTS University';
     final isIelts = coachingCenter == 'IELTS University';
     
-    final primaryColor = isIelts ? const Color(0xFFD81B60) : const Color(0xFF4C51BF);
+    final primaryColor = isIelts ? const Color(0xFFD81B60) : const Color(0xFF38A169);
     final centerIcon = isIelts ? Icons.school : Icons.science;
     const slateNavy = Color(0xFF1A202C);
 

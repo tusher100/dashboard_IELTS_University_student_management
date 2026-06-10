@@ -41,22 +41,25 @@ class IELTSUniversityAdminWeb extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    const primaryRed = Color(0xFFE4284C);
+    final coachingCenter = ref.watch(coachingCenterProvider) ?? 'IELTS University';
+    final isIelts = coachingCenter == 'IELTS University';
+    
+    final primaryColor = isIelts ? const Color(0xFFE4284C) : const Color(0xFF38A169);
     const slateNavy = Color(0xFF1A202C);
     const scaffoldBg = Color(0xFFF7FAFC);
 
     final isAuthenticated = ref.watch(authProvider);
 
     return MaterialApp(
-      title: 'IELTS University Admin',
+      title: isIelts ? 'IELTS University Admin' : 'Ignite Academic Admin',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        primaryColor: primaryRed,
+        primaryColor: primaryColor,
         scaffoldBackgroundColor: scaffoldBg,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: primaryRed, 
-          primary: primaryRed,
+          seedColor: primaryColor, 
+          primary: primaryColor,
           secondary: slateNavy,
         ),
         textTheme: GoogleFonts.montserratTextTheme(),
@@ -77,14 +80,14 @@ class IELTSUniversityAdminWeb extends ConsumerWidget {
         inputDecorationTheme: InputDecorationTheme(
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[200]!)),
           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[200]!)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: primaryRed, width: 2)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primaryColor, width: 2)),
           filled: true,
           fillColor: const Color(0xFFF7FAFC),
           contentPadding: const EdgeInsets.all(20),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: primaryRed,
+            backgroundColor: primaryColor,
             foregroundColor: Colors.white,
             elevation: 0,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
