@@ -7,6 +7,7 @@ enum DashboardSection {
   results, 
   analytics, 
   pending, 
+  courses,
   settings 
 }
 

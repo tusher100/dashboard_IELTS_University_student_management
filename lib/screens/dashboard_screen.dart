@@ -10,6 +10,7 @@ import 'student_directory.dart';
 import 'course_results.dart';
 import 'analytics_view.dart';
 import 'pending_approvals_view.dart';
+import 'courses_view.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -53,6 +54,7 @@ class DashboardScreen extends ConsumerWidget {
       case DashboardSection.results: return const CourseResultsView(key: ValueKey('results'));
       case DashboardSection.analytics: return const AnalyticsView(key: ValueKey('analytics'));
       case DashboardSection.pending: return const PendingApprovalsView(key: ValueKey('pending'));
+      case DashboardSection.courses: return const CoursesView(key: ValueKey('courses'));
       case DashboardSection.settings: return _buildSettingsView(ref);
     }
   }
@@ -105,6 +107,7 @@ class DashboardScreen extends ConsumerWidget {
           _buildSidebarItem(context, ref, Icons.receipt_long_rounded, 'Receipts', DashboardSection.receipts, currentSection == DashboardSection.receipts, asDrawer, primaryColor),
           _buildSidebarItem(context, ref, Icons.people_alt_rounded, 'Directory', DashboardSection.students, currentSection == DashboardSection.students, asDrawer, primaryColor),
           _buildSidebarItem(context, ref, Icons.bar_chart_rounded, 'Results', DashboardSection.results, currentSection == DashboardSection.results, asDrawer, primaryColor),
+          _buildSidebarItem(context, ref, Icons.book_rounded, 'Manage Courses', DashboardSection.courses, currentSection == DashboardSection.courses, asDrawer, primaryColor),
           _buildSidebarItem(context, ref, Icons.insights_rounded, 'Analytics', DashboardSection.analytics, currentSection == DashboardSection.analytics, asDrawer, primaryColor),
           _buildSidebarItem(context, ref, Icons.settings_suggest_rounded, 'Settings', DashboardSection.settings, currentSection == DashboardSection.settings, asDrawer, primaryColor),
           const Spacer(),
@@ -177,6 +180,7 @@ class DashboardScreen extends ConsumerWidget {
       case DashboardSection.receipts: title = 'Payments & Receipts'; break;
       case DashboardSection.students: title = 'Student Directory'; break;
       case DashboardSection.results: title = 'Course Results'; break;
+      case DashboardSection.courses: title = 'Manage Courses'; break;
       case DashboardSection.analytics: title = 'System Analytics'; break;
       case DashboardSection.pending: title = 'Pending Approvals'; break;
       case DashboardSection.settings: title = 'System Settings'; break;

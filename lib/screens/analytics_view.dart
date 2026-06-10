@@ -11,16 +11,47 @@ class AnalyticsView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final studentsAsync = ref.watch(filteredStudentsProvider);
     final rawStudentsAsync = ref.watch(studentsStreamProvider);
-    final List<String> batches = rawStudentsAsync.maybeWhen(
-      data: (students) => students.map((e) => e.batchName).where((b) => b.isNotEmpty).toSet().toList()..sort(),
-      orElse: () => [],
-    );
+    
+    final List<String> batches = [];
+    final List<String> levels = [];
+    final List<String> courses = [];
+    
+    rawStudentsAsync.whenData((students) {
+      batches.addAll(students.map((e) => e.displayBatch).where((b) => b.isNotEmpty).toSet().toList()..sort());
+      levels.addAll(students.map((e) => e.level).where((l) => l != 'None').toSet().toList()..sort());
+      courses.addAll(students.map((e) => e.course).toSet().toList()..sort());
+    });
+
     final currentBatch = ref.watch(batchFilterProvider);
+    final currentLevel = ref.watch(levelFilterProvider);
+    final currentCourse = ref.watch(courseFilterProvider);
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < 800;
         
+        Widget buildDropdown(String hint, String? value, List<String> items, Function(String?) onChanged) {
+          return SizedBox(
+            width: isMobile ? double.infinity : 200,
+            child: DropdownButtonFormField<String>(
+              value: value,
+              isExpanded: true,
+              hint: Text(hint),
+              items: [
+                DropdownMenuItem<String>(value: null, child: Text(hint, overflow: TextOverflow.ellipsis)),
+                ...items.map((i) => DropdownMenuItem(value: i, child: Text(i, overflow: TextOverflow.ellipsis))),
+              ],
+              onChanged: onChanged,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+              ),
+            ),
+          );
+        }
+
         return Padding(
           padding: EdgeInsets.all(isMobile ? 16 : 32),
           child: Column(
@@ -36,51 +67,39 @@ class AnalyticsView extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: currentBatch,
-                  isExpanded: true,
-                  hint: const Text('All Batches'),
-                  items: [
-                    const DropdownMenuItem<String>(value: null, child: Text('All Batches', overflow: TextOverflow.ellipsis)),
-                    ...batches.map((b) => DropdownMenuItem(value: b, child: Text(b, overflow: TextOverflow.ellipsis))),
-                  ],
-                  onChanged: (val) => ref.read(batchFilterProvider.notifier).update(val),
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  ),
-                ),
+                buildDropdown('All Levels', currentLevel, levels, (v) => ref.read(levelFilterProvider.notifier).update(v)),
+                const SizedBox(height: 8),
+                buildDropdown('All Courses', currentCourse, courses, (v) => ref.read(courseFilterProvider.notifier).update(v)),
+                const SizedBox(height: 8),
+                buildDropdown('All Batches', currentBatch, batches, (v) => ref.read(batchFilterProvider.notifier).update(v)),
               ] else
-                Row(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Business Analytics',
-                      style: GoogleFonts.montserrat(
-                        fontSize: 24, 
-                        fontWeight: FontWeight.bold, 
-                        color: const Color(0xFF1A202C)
-                      ),
-                    ),
-                    const Spacer(),
-                    SizedBox(
-                      width: 200,
-                      child: DropdownButtonFormField<String>(
-                        value: currentBatch,
-                        isExpanded: true,
-                        hint: const Text('All Batches'),
-                        items: [
-                          const DropdownMenuItem<String>(value: null, child: Text('All Batches', overflow: TextOverflow.ellipsis)),
-                          ...batches.map((b) => DropdownMenuItem(value: b, child: Text(b, overflow: TextOverflow.ellipsis))),
-                        ],
-                        onChanged: (val) => ref.read(batchFilterProvider.notifier).update(val),
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    Row(
+                      children: [
+                        Text(
+                          'Business Analytics',
+                          style: GoogleFonts.montserrat(
+                            fontSize: 24, 
+                            fontWeight: FontWeight.bold, 
+                            color: const Color(0xFF1A202C)
+                          ),
                         ),
-                      ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (levels.isNotEmpty) ...[
+                          buildDropdown('All Levels', currentLevel, levels, (v) => ref.read(levelFilterProvider.notifier).update(v)),
+                          const SizedBox(width: 16),
+                        ],
+                        buildDropdown('All Courses', currentCourse, courses, (v) => ref.read(courseFilterProvider.notifier).update(v)),
+                        const SizedBox(width: 16),
+                        buildDropdown('All Batches', currentBatch, batches, (v) => ref.read(batchFilterProvider.notifier).update(v)),
+                      ],
                     ),
                   ],
                 ),

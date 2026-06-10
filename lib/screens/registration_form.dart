@@ -131,21 +131,15 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
 
   void _updateCalculations() {
     final center = ref.read(coachingCenterProvider) ?? 'IELTS University';
-    Map<String, CourseData> courses;
-    if (center == 'IELTS University') {
-      courses = CourseData.ieltsCourses;
-    } else {
-      if (_selectedLevel == 'HSC') {
-        courses = CourseData.igniteHscCourses;
-      } else if (_selectedLevel == 'SSC') {
-        courses = CourseData.igniteSscCourses;
-      } else {
-        courses = {};
-      }
-    }
+    final allCourses = ref.read(coursesStreamProvider).value ?? [];
+    
+    final courses = allCourses.where((c) {
+      if (center == 'IELTS University') return true;
+      return c.level == _selectedLevel;
+    }).toList();
 
     if (_selectedCourse != null) {
-      final courseData = courses[_selectedCourse];
+      final courseData = courses.where((c) => c.title == _selectedCourse).firstOrNull;
       if (courseData != null) {
         if (_selectedLevel == 'HSC' && _selectedCourse == 'Monthly Care') {
           int count = _hscMonthlyCareSubjects.values.where((v) => v).length;
@@ -616,19 +610,21 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
 
   Widget _buildCourseDropdown([double? width]) {
     final center = ref.watch(coachingCenterProvider) ?? 'IELTS University';
-    Map<String, CourseData> courses;
-    if (center == 'IELTS University') {
-      courses = CourseData.ieltsCourses;
-    } else {
-      courses = _selectedLevel == 'SSC' ? CourseData.igniteSscCourses : CourseData.igniteHscCourses;
-    }
+    final allCourses = ref.watch(coursesStreamProvider).value ?? [];
+    
+    final courses = allCourses.where((c) {
+      if (center == 'IELTS University') return true;
+      return c.level == _selectedLevel;
+    }).toList();
+    
+    final courseTitles = courses.map((c) => c.title).toList();
 
     return SizedBox(
       width: width ?? 300,
       child: DropdownButtonFormField<String>(
-        value: courses.containsKey(_selectedCourse) ? _selectedCourse : null,
+        value: courseTitles.contains(_selectedCourse) ? _selectedCourse : null,
         isExpanded: true,
-        items: courses.keys.map((e) => DropdownMenuItem(value: e, child: Text(e, overflow: TextOverflow.ellipsis))).toList(),
+        items: courseTitles.map((e) => DropdownMenuItem(value: e, child: Text(e, overflow: TextOverflow.ellipsis))).toList(),
         onChanged: (val) {
           _selectedCourse = val;
           _updateCalculations();

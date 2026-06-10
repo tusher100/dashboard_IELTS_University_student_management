@@ -1,45 +1,47 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class CourseData {
+class CourseModel {
+  final String? id;
   final String title;
   final int price;
   final String duration;
   final int admissionFee;
+  final String coachingCenter;
+  final String level; // 'SSC', 'HSC', 'None'
 
-  const CourseData({
+  const CourseModel({
+    this.id,
     required this.title,
     required this.price,
     required this.duration,
     this.admissionFee = 0,
+    required this.coachingCenter,
+    required this.level,
   });
 
-  static const Map<String, CourseData> ieltsCourses = {
-    'Pre-IELTS Care': CourseData(title: 'Pre-IELTS Care', price: 12900, duration: '3.5 month'),
-    'Spoken+Computer Basic': CourseData(title: 'Spoken+Computer Basic', price: 3900, duration: ''),
-    'Spoken': CourseData(title: 'Spoken', price: 2000, duration: ''),
-    'Computer Basic': CourseData(title: 'Computer Basic', price: 2000, duration: ''),
-    'IELTS Pre': CourseData(title: 'IELTS Pre', price: 8900, duration: '3 month'),
-    'IELTS Rapid': CourseData(title: 'IELTS Rapid', price: 7900, duration: '45 days'),
-    'ICT+English': CourseData(title: 'ICT+English', price: 3900, duration: ''),
-    'ICT': CourseData(title: 'ICT', price: 3000, duration: ''),
-    'English': CourseData(title: 'English', price: 3000, duration: ''),
-    'Mock Test': CourseData(title: 'Mock Test', price: 500, duration: ''),
-    'IELTS Exam Batch': CourseData(title: 'IELTS Exam Batch', price: 2000, duration: '4 mock test'),
-    'One to One': CourseData(title: 'One to One', price: 12000, duration: 'monthly'),
-    'Kids Spoken': CourseData(title: 'Kids Spoken', price: 1000, duration: 'admission fee'),
-    'Kids Spoken Monthly': CourseData(title: 'Kids Spoken Monthly', price: 1500, duration: 'monthly fee'),
-  };
+  factory CourseModel.fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    return CourseModel(
+      id: doc.id,
+      title: data['title'] ?? '',
+      price: data['price'] ?? 0,
+      duration: data['duration'] ?? '',
+      admissionFee: data['admissionFee'] ?? 0,
+      coachingCenter: data['coachingCenter'] ?? 'IELTS University',
+      level: data['level'] ?? 'None',
+    );
+  }
 
-  static const Map<String, CourseData> igniteHscCourses = {
-    'Exam Batch': CourseData(title: 'Exam Batch', price: 2000, duration: 'Monthly', admissionFee: 1000),
-    'Monthly Care': CourseData(title: 'Monthly Care', price: 1500, duration: 'Monthly', admissionFee: 1000),
-    'Combo Course (ICT + English)': CourseData(title: 'Combo Course (ICT + English)', price: 3000, duration: 'Monthly', admissionFee: 1000),
-  };
-
-  static const Map<String, CourseData> igniteSscCourses = {
-    'Exam Batch': CourseData(title: 'Exam Batch', price: 1500, duration: 'Monthly', admissionFee: 1000),
-    'Monthly Care': CourseData(title: 'Monthly Care', price: 1000, duration: 'Monthly', admissionFee: 1000),
-  };
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'price': price,
+      'duration': duration,
+      'admissionFee': admissionFee,
+      'coachingCenter': coachingCenter,
+      'level': level,
+    };
+  }
 }
 
 class PaymentRecord {
@@ -280,3 +282,18 @@ class ReceiptModel {
   }
 }
 
+extension StudentBatchExtension on StudentModel {
+  String get displayBatch {
+    if (coachingCenter == 'Ignite Academic' && course.contains(' - ')) {
+      return '${course.split(' - ')[0]} $batchName';
+    }
+    return batchName;
+  }
+
+  String get level {
+    if (coachingCenter == 'Ignite Academic' && course.contains(' - ')) {
+      return course.split(' - ')[0];
+    }
+    return 'None';
+  }
+}

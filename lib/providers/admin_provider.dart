@@ -52,7 +52,31 @@ class AdminNotifier extends Notifier<void> {
     if (student.id == null) return;
     await FirebaseFirestore.instance.collection('students').doc(student.id).update({'isApproved': true});
   }
+
+  Future<void> addCourse(CourseModel course) async {
+    await FirebaseFirestore.instance.collection('courses').add(course.toMap());
+  }
+
+  Future<void> updateCourse(CourseModel course) async {
+    if (course.id == null) return;
+    await FirebaseFirestore.instance.collection('courses').doc(course.id).update(course.toMap());
+  }
+
+  Future<void> deleteCourse(String id) async {
+    await FirebaseFirestore.instance.collection('courses').doc(id).delete();
+  }
 }
+
+final coursesStreamProvider = StreamProvider<List<CourseModel>>((ref) {
+  final center = ref.watch(coachingCenterProvider);
+  if (center == null) return const Stream.empty();
+
+  return FirebaseFirestore.instance
+      .collection('courses')
+      .where('coachingCenter', isEqualTo: center)
+      .snapshots()
+      .map((snapshot) => snapshot.docs.map((doc) => CourseModel.fromFirestore(doc)).toList());
+});
 
 final studentsStreamProvider = StreamProvider<List<StudentModel>>((ref) {
   final center = ref.watch(coachingCenterProvider);
@@ -94,15 +118,39 @@ class BatchFilterNotifier extends Notifier<String?> {
 
 final batchFilterProvider = NotifierProvider<BatchFilterNotifier, String?>(BatchFilterNotifier.new);
 
+class LevelFilterNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+  void update(String? value) => state = value;
+}
+
+final levelFilterProvider = NotifierProvider<LevelFilterNotifier, String?>(LevelFilterNotifier.new);
+
+class CourseFilterNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+  void update(String? value) => state = value;
+}
+
+final courseFilterProvider = NotifierProvider<CourseFilterNotifier, String?>(CourseFilterNotifier.new);
+
 final filteredStudentsProvider = Provider<AsyncValue<List<StudentModel>>>((ref) {
   final studentsAsync = ref.watch(studentsStreamProvider);
   final searchQuery = ref.watch(searchQueryProvider).toLowerCase();
   final batchFilter = ref.watch(batchFilterProvider);
+  final levelFilter = ref.watch(levelFilterProvider);
+  final courseFilter = ref.watch(courseFilterProvider);
 
   return studentsAsync.whenData((students) {
     var filtered = students;
+    if (levelFilter != null && levelFilter.isNotEmpty) {
+      filtered = filtered.where((s) => s.level == levelFilter).toList();
+    }
+    if (courseFilter != null && courseFilter.isNotEmpty) {
+      filtered = filtered.where((s) => s.course == courseFilter).toList();
+    }
     if (batchFilter != null && batchFilter.isNotEmpty) {
-      filtered = filtered.where((s) => s.batchName == batchFilter).toList();
+      filtered = filtered.where((s) => s.displayBatch == batchFilter).toList();
     }
     if (searchQuery.isEmpty) return filtered;
     return filtered.where((student) {
