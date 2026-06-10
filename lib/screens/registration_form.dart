@@ -286,7 +286,7 @@ class _RegistrationFormState extends ConsumerState<RegistrationForm> {
       } else {
         ref.read(isPdfGeneratingProvider.notifier).update(true);
         try {
-          await PdfService.generateAndPrintReceipt(student);
+          await PdfService.generateReceipt(student);
         } finally {
           ref.read(isPdfGeneratingProvider.notifier).update(false);
         }

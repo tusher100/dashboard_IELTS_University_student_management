@@ -410,7 +410,7 @@ class StudentDirectory extends ConsumerWidget {
 
                 ref.read(isPdfGeneratingProvider.notifier).update(true);
                 try {
-                  await PdfService.generateAndPrintReceipt(updatedStudent);
+                  await PdfService.generateReceipt(updatedStudent);
                 } finally {
                   ref.read(isPdfGeneratingProvider.notifier).update(false);
                 }

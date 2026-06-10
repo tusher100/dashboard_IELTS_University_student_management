@@ -90,14 +90,35 @@ class ReceiptsView extends ConsumerWidget {
           title: Text(student.fullName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isMobile ? 14 : 16)),
           subtitle: Text('${student.mobileNumber}\n${student.course}\nBatch: ${student.batchName}', style: const TextStyle(fontSize: 12)),
           trailing: isMobile 
-            ? IconButton(
-                onPressed: () => PdfService.generateAndPrintReceipt(student),
-                icon: const Icon(Icons.print, color: Colors.blue),
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    onPressed: () => PdfService.generateReceipt(student, share: true),
+                    icon: const Icon(Icons.share, color: Colors.green),
+                  ),
+                  IconButton(
+                    onPressed: () => PdfService.generateReceipt(student),
+                    icon: const Icon(Icons.print, color: Colors.blue),
+                  ),
+                ],
               )
-            : ElevatedButton.icon(
-                onPressed: () => PdfService.generateAndPrintReceipt(student),
-                icon: const Icon(Icons.print, size: 18),
-                label: const Text('PRINT RECEIPT'),
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => PdfService.generateReceipt(student, share: true),
+                    icon: const Icon(Icons.share, size: 18),
+                    label: const Text('SHARE', style: TextStyle(color: Colors.green)),
+                    style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.green)),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () => PdfService.generateReceipt(student),
+                    icon: const Icon(Icons.print, size: 18),
+                    label: const Text('PRINT RECEIPT'),
+                  ),
+                ],
               ),
         );
       },

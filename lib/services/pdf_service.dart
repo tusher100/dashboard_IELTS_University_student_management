@@ -5,7 +5,7 @@ import '../models/models.dart';
 import 'package:intl/intl.dart';
 
 class PdfService {
-  static Future<void> generateAndPrintReceipt(StudentModel student) async {
+  static Future<void> generateReceipt(StudentModel student, {bool share = false}) async {
     final pdf = pw.Document();
     
     // Branding Colors based on coaching center
@@ -210,10 +210,17 @@ class PdfService {
     // Save PDF bytes once to avoid re-rendering multiple times by the browser
     final bytes = await pdf.save();
     
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => bytes,
-      name: 'Receipt_${student.fullName}_$receiptId',
-    );
+    if (share) {
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: 'Receipt_${student.fullName}_$receiptId.pdf',
+      );
+    } else {
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => bytes,
+        name: 'Receipt_${student.fullName}_$receiptId',
+      );
+    }
   }
 
   static pw.TableRow _buildTableRow(String label, String value) {
