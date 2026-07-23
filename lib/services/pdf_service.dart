@@ -70,8 +70,8 @@ class PdfService {
                         pw.Text(student.coachingCenter.toUpperCase(), style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: primaryColor)),
                       pw.SizedBox(height: 8),
                       pw.Text('3rd Floor, Sharif Complex, Habiganj', style: const pw.TextStyle(fontSize: 8)),
-                      pw.Text('Phone: 01870237734', style: const pw.TextStyle(fontSize: 8)),
-                      pw.Text('Email: ieltsvarsityofficial@gmail.com', style: const pw.TextStyle(fontSize: 8)),
+                      pw.Text('Phone: ${isIgnite ? '01978596123' : '01870237734'}', style: const pw.TextStyle(fontSize: 8)),
+                      pw.Text('Email: ${isIgnite ? 'igniteeducationinfo@gmail.com' : 'ieltsvarsityofficial@gmail.com'}', style: const pw.TextStyle(fontSize: 8)),
                     ],
                   ),
                   pw.Column(
